@@ -1,0 +1,282 @@
+# comma
+
+An opinionated language overlay for [yoke](https://github.com/cablehead/yoke) — a stateless toolbox of nushell commands for working with text. Each command takes text in, returns text out, and is ready to pipe into the next one. No conversation context, no markdown decoration, no LLM scaffolding to manage.
+
+Where `yolay` is a general-purpose agent REPL, `comma` is its opposite: a tight set of single-purpose commands organized into a clear pipeline — research, generate, analyze, transform, publish.
+
+## Install
+
+`comma` is a nushell directory module. Drop it anywhere and load it as an overlay:
+
+```nu
+overlay use /path/to/comma
+```
+
+Or, if you keep it in a fixed location, add the overlay to your `config.nu`.
+
+After loading you'll see:
+
+```
+comma overlay loaded · gemini/gemini-3.1-flash-lite-preview
+transform · generate · analyze — ,? for list
+```
+
+Type `,?` (or `status`) at any time for the current command inventory.
+
+## Dependencies
+
+Required:
+
+- **nushell** 0.106+
+- **yoke** — provides the underlying LLM call interface
+
+Optional, per module:
+
+| Module | Tool | Purpose |
+|---|---|---|
+| publish | `pandoc` | Universal document converter (PDF, HTML, DOCX, EPUB) |
+| publish | `typst` | Default PDF engine (faster, nicer typography than LaTeX) |
+| research | `reader` | Mozilla Readability port in Go for clean article extraction. `go install github.com/mrusme/reader@latest` |
+| research | `nu_plugin_browse` | Headless Chromium for JS-rendered pages. Only needed for `fetch --js`. `cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse` |
+| research | `iwe` | Markdown knowledge graph used as note persistence layer. https://iwe.md |
+| analyze (LLM) | network | `factcheck` and `quotes` use `web_search` via the analyze model |
+
+Commands that need a missing tool fail with a clear error pointing at the install command. The module loads regardless.
+
+## The pipeline
+
+The five modules form a left-to-right pipeline. You rarely use all of them in one chain, but the flow is the mental model:
+
+```
+research → generate → analyze → transform → publish
+```
+
+- **research** captures, distills and supplies factual context
+- **generate** writes new text from a brief, optionally grounded in research
+- **analyze** inspects existing text — statistics, frequencies, fact-checking
+- **transform** rewrites existing text — translation, proofreading, tone shifts
+- **publish** renders finished text to PDF, HTML, DOCX, EPUB
+
+There is also `polish` (in `pipeline.nu`) which orchestrates analyze + transform iteratively to refine a draft until it converges on quality thresholds.
+
+## Quick start
+
+```nu
+# Translate
+"Hello, world" | tr da
+
+# Proofread
+"Jeg har set tre hunde igår" | proof
+
+# Summarize a file
+open --raw artikel.md | sum --bullets --max 5
+
+# Statistical report on a text
+open --raw artikel.md | report --lang da --top 10
+
+# Fetch and distill a web article into a study note
+fetch "https://example.com/article" | distill
+
+# Draft something using IWE notes as factual ground truth
+"LinkedIn post about automation" | draft --notes automation-essentials
+
+# Iteratively polish a draft to publication quality
+open --raw draft.md | polish --level editorial --brief "blog post about espresso"
+
+# Render to PDF
+open --raw final.md | to-pdf final.pdf --title "Espresso" --author "LK"
+```
+
+## Modules
+
+### transform.nu — rewrite existing text
+
+| Command | Alias | What |
+|---|---|---|
+| `tr <target>` | `,t` | Translate to a target language (ISO code or name) |
+| `rw <instruction>` | `,r` | Rewrite per a freeform instruction |
+| `sum` | `,s` | Summarize as prose or bullets |
+| `proof` | `,p` | Correct spelling, grammar, punctuation |
+| `tone <style>` | `,o` | Shift tone (formal, casual, executive, friendly, …) |
+
+### generate.nu — produce new text from a brief
+
+All five commands accept `--notes <key>` to pull IWE context as factual background.
+
+| Command | Alias | What |
+|---|---|---|
+| `draft` | `,dr` | Complete draft from a brief |
+| `expand` | `,ex` | Bullets/notes → connected prose |
+| `title` | `,ti` | Propose title candidates |
+| `ideas` | `,id` | Brainstorm distinct ideas |
+| `ask` | `,as` | Generate questions (open / faq / interview / socratic) |
+
+### analyze.nu — inspect text
+
+Split into deterministic (cheap, offline) and LLM-backed (uses tools, costs tokens).
+
+**Deterministic:**
+
+| Command | Alias | What |
+|---|---|---|
+| `stats` | `,st` | Lines, words, chars, sentences, paragraphs, avg word length |
+| `freq` | `,fq` | Word frequency with built-in EN/DA stopword sets |
+| `ngrams` | `,ng` | Bigram/trigram frequency |
+| `kwic <keyword>` | `,kc` | Keyword-in-context concordance |
+| `lix` | `,lx` | Lix readability score (Scandinavian standard) |
+| `repeats` | `,rp` | Repeated n-gram phrases — catches accidental duplication |
+| `compare <other>` | `,cp` | Distinctive words in A vs B via smoothed log-odds |
+| `hapax` | `,hp` | Words appearing exactly once |
+| `ttr` | `,tt` | Type-token ratio (lexical richness) |
+| `similar <other>` | `,sl` | Jaccard similarity via k-shingles |
+| `sentences` | `,sn` | Split text into sentences |
+| `paragraphs` | `,pa` | Split text into paragraphs |
+| `extract --kind url\|email\|hashtag\|mention` | `,xt` | Regex extraction |
+| `report` | `,rt` | Combined report: stats + freq + lix + ttr + sentiment + keywords + readability + … |
+
+**LLM-backed** (uses `gemini-3-pro-preview` with `web_search` + `nu` tools by default):
+
+| Command | Alias | What |
+|---|---|---|
+| `detect` | `,de` | Language ID (ISO code or English name) |
+| `sentiment` | `,se` | Positive / neutral / negative, optional score |
+| `keywords` | `,kw` | Top-N key phrases |
+| `entities` | `,en` | Named entities with type tags |
+| `readability` | `,rd` | Qualitative reading level + audience |
+| `classify <labels>` | `,cl` | Pick best-fit label(s) |
+| `factcheck` | `,fc` | Verify claims against web sources |
+| `quotes` | `,qu` | Verify quotation wording and attribution |
+| `claims` | `,cm` | Extract distinct claims for downstream factchecking |
+
+### research.nu — capture, distill, bridge to IWE
+
+| Command | Alias | What |
+|---|---|---|
+| `fetch <url>` | `,fe` | Mozilla Readability extraction via reader → markdown |
+| `distill` | `,di` | Raw text → structured study note (claims, quotes, open questions, keywords) |
+| `cite <topic>` | `,ci` | LLM-extract verbatim quotes about a topic |
+| `context <key>` | `,cx` | `iwe retrieve` + prompt-shaping for generate |
+
+All commands return markdown on stdout. Persistence is your call — pipe to `iwe attach <key>` or `iwe new <key>` with your own template config.
+
+### pipeline.nu — iterative critic loop
+
+| Command | Alias | What |
+|---|---|---|
+| `polish` | `,po` | Generate-or-take-draft, critique with deterministic + LLM critics, patch findings, repeat until convergence |
+
+`polish` runs in three levels:
+
+- `light` — `proof` + `lix` thresholds
+- `editorial` (default) — adds `repeats`, `readability`
+- `publication` — adds `factcheck` and `quotes` as warnings (not auto-fixes)
+
+Output is the polished text on stdout. The revision log and any warnings go to stderr so pipes stay clean.
+
+### publish.nu — render to publishable formats
+
+| Command | Alias | What |
+|---|---|---|
+| `to-pdf <out>` | `,pd` | PDF via pandoc + typst (default engine) |
+| `to-html <out>` | `,hl` | Standalone HTML5 |
+| `to-docx <out>` | `,dx` | Word DOCX |
+| `to-epub <out>` | `,ep` | EPUB3 |
+| `to-typst <out>` | `,tp` | Typst source — tweak before compile |
+| `typst-compile <in> <out>` | — | Direct `.typ` → `.pdf` without pandoc |
+| `preview` | `,pv` | Render to temp PDF and open in default viewer |
+| `pub <out>` | `,pb` | Generic dispatch by output file extension |
+
+All commands accept `--title`, `--author`, `--date` for pandoc metadata. PDF takes `--engine typst\|xelatex\|pdflatex\|weasyprint` and `--template <path>`.
+
+## Full pipeline example
+
+```nu
+# 1. Capture two sources
+fetch "https://example.com/espresso-extraction-deep-dive" | iwe attach research-espresso
+fetch "https://example.com/grind-size-science"          | iwe attach research-espresso
+
+# 2. Distill each source into a study note linked under espresso-essentials
+iwe retrieve -k research-espresso/extraction-deep-dive | distill | iwe attach espresso-essentials
+iwe retrieve -k research-espresso/grind-size-science    | distill | iwe attach espresso-essentials
+
+# 3. Draft a blog post grounded in the research
+"Blog post about espresso extraction and grind size, for home brewers" \
+    | draft --notes espresso-essentials --notes-depth 2 \
+    | save -f draft.md
+
+# 4. Iteratively refine until quality thresholds are met
+open --raw draft.md \
+    | polish --level editorial --brief "Blog post about espresso extraction and grind size, for home brewers" --verbose \
+    > polished.md
+
+# 5. Publish as PDF
+open --raw polished.md | to-pdf espresso.pdf --title "Espresso essentials" --author "LK"
+```
+
+## Configuration
+
+### Default models
+
+`comma` uses different LLM configs per module to match each module's needs:
+
+| Module | Provider | Model | Tools | Override via |
+|---|---|---|---|---|
+| transform, generate, research | gemini | gemini-3.1-flash-lite-preview | none | `$env.COMMA_CFG` |
+| analyze (LLM commands) | gemini | gemini-3-pro-preview | web_search, nu | `$env.COMMA_ANALYZE_CFG` |
+
+The analyze module deliberately ignores `COMMA_CFG.tools` because commands like `factcheck` and `quotes` need real `web_search` to do anything more than hallucinate citations.
+
+Change the global default for the session:
+
+```nu
+model claude-sonnet-4-6 --provider anthropic
+```
+
+Or set directly:
+
+```nu
+$env.COMMA_CFG = {provider: openai, model: gpt-4o, tools: none}
+```
+
+Override analyze separately:
+
+```nu
+$env.COMMA_ANALYZE_CFG = {provider: anthropic, model: claude-sonnet-4-6, tools: web_search}
+```
+
+### IWE workspace
+
+Run `research.context` and any `--notes <key>` flag from inside an IWE-initialized directory (`iwe init` to set one up). The note keys come from your IWE workspace; comma does not maintain its own notebook.
+
+## Design principles
+
+1. **Stateless commands, optional stateful filesystem.** Every command is `text in → text out`. Persistence lives in IWE markdown files you control, not in opaque comma state.
+
+2. **Pipe-first.** Pipeline input is the primary input. Positional arguments exist for short inline strings only. Output is always plain text on stdout (records where structure helps); logging goes to stderr.
+
+3. **Determinism where possible.** Word frequency, n-grams, Lix, readability metrics, stopword filtering, regex extraction — all are pure nushell, reproducible, free. LLMs are used only where they genuinely add value (translation, proofreading, classification under ambiguity, etc.).
+
+4. **Minimal magic.** Commands wrap external tools (`reader`, `pandoc`, `typst`, `iwe`) thinly. The wrappers don't fight the underlying tools — they expose just enough surface to make the pipeline ergonomic.
+
+5. **Patch, don't redraft.** The `polish` critic loop applies targeted fixes per finding rather than regenerating the entire text. Three small diffs beat one large rewrite.
+
+6. **Anchor against drift.** Briefs propagate through the polish loop as a system-prompt anchor. Research notes propagate into generate as factual ground truth, never as text to be paraphrased.
+
+## File layout
+
+```
+comma/
+├── mod.nu          # entry point — re-exports all submodules, defines status/model commands and aliases
+├── transform.nu    # tr, rw, sum, proof, tone
+├── generate.nu     # draft, expand, title, ideas, ask (all support --notes)
+├── analyze.nu      # stats, freq, lix, … + LLM analyzers + report
+├── research.nu     # fetch, distill, cite, context
+├── pipeline.nu     # polish (orchestrates analyze + transform + generate)
+└── publish.nu      # to-pdf, to-html, to-docx, to-epub, to-typst, preview, pub
+```
+
+Each submodule keeps its private helpers (`comma-call`, `comma-input`) local to avoid circular imports across the directory module. The duplication is intentional and small (~25 lines per file).
+
+## Status command
+
+`status` (alias `,?`) prints the current configuration and the full command inventory, grouped by module. Run it whenever you forget what's available.

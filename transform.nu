@@ -1,42 +1,18 @@
-# comma - opinionated sprog-overlay til yoke
+# comma · transform — kommandoer der omformer eksisterende tekst.
 #
-# yolay.nu er en generel agent-REPL. comma.nu er det modsatte: et stramt
-# sæt sprog-kommandoer der hver returnerer KUN den bearbejdede tekst.
-# Ingen samtale-ctx, ingen værktøjer, ingen markdown-pynt — bare tekst
-# ind, tekst ud, klar til pipe.
-#
-# Quick start:
-#   overlay use comma.nu
-#   "Hello, world" | tr da
-#   "denne tekst er for lang og snørklet" | rw "kortere og klarere"
-#   open notat.md | sum
-#   "Jeg har set tre hunde igår" | proof
-#   "vi skal mødes klokken to" | tone formal
-#
-# Designprincipper:
-# - Hver kommando er stateless. Ingen $env.YO_CTX. Hver invokation er én tur.
-# - Default tools=none. Sprogopgaver må ikke kalde shell/web/kode.
-# - Output er ren tekst uden citationstegn, indledninger eller forklaringer.
-# - Pipeline er førsteklasses input. Positionsargumenter er kun til korte
-#   inline-strenge.
-# - Mål-sprog accepterer både ISO-koder (da, en, fr) og navne (dansk, engelsk).
-
-# --- Defaults ---
+# Hver kommando tager tekst ind (via pipe eller argument) og returnerer
+# en omformet udgave af samme tekst. Ingen samtale-ctx, ingen tools.
 
 const PROVIDER = "gemini"
 const MODEL    = "gemini-3.1-flash-lite-preview"
 const TOOLS    = "none"
 
-# Fælles regel der prependes til ALLE prompts. Stram, så modellen ikke
-# tilføjer "Here is the translation:" eller markdown-citater.
 const PURITY_RULE = "Output requirements (strict):
 - Return ONLY the resulting text.
 - Do not wrap in quotes, code fences, or markdown.
 - Do not add a preamble, label, explanation, or trailing commentary.
 - Preserve the source's paragraph breaks and line breaks.
 - If the input is already in the requested target state, return it unchanged."
-
-# --- Internal helpers ---
 
 def comma-cfg [] {
     $env | get COMMA_CFG? | default {
@@ -46,8 +22,6 @@ def comma-cfg [] {
     }
 }
 
-# Læs pipeline-input og evt. positionsargumenter, returnér én streng.
-# Hvis begge er givet bruges positionsargumenter (typisk korte inline-tests).
 def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
@@ -58,9 +32,6 @@ def comma-input [piped: any, args: list<string>] {
     $piped | to text
 }
 
-# Kør yoke uden tools, opsaml assistant-tekst stille (ingen stream-render).
-# System-prompten injiceres som en system-record forrest i JSONL-stdin
-# (samme mønster som yo/mod.nu bruger).
 def comma-call [system: string, user: string] {
     let c = comma-cfg
     let full_system = $"($system)\n\n($PURITY_RULE)"
@@ -79,8 +50,6 @@ def comma-call [system: string, user: string] {
         | str join ""
         | str trim
 }
-
-# --- Commands ---
 
 # Oversæt tekst til et mål-sprog.
 #
@@ -186,50 +155,4 @@ export def tone [
     }
     let sys = $"You are a register specialist. Rewrite the user's text in ($guidance). Keep the meaning, facts, and approximate length unchanged. Match the source language."
     comma-call $sys $src
-}
-
-# Vis nuværende config og en kort liste over kommandoer.
-export def status [] {
-    let c = comma-cfg
-    print $"(ansi cyan_bold)comma(ansi reset) · ($c.provider)/($c.model) · tools: ($c.tools)"
-    print $"(ansi attr_dimmed)kommandoer: tr · rw · sum · proof · tone(ansi reset)"
-}
-
-# Skift model/provider for resten af sessionen.
-#
-#   model claude-sonnet-4-6 --provider anthropic
-#   model gpt-4o --provider openai
-export def --env model [
-    name: string
-    --provider: string
-] {
-    let current = comma-cfg
-    let updated = if $provider != null {
-        $current | merge {model: $name, provider: $provider}
-    } else {
-        $current | merge {model: $name}
-    }
-    $env.COMMA_CFG = $updated
-    print $"(ansi attr_dimmed)now: ($updated.provider)/($updated.model)(ansi reset)"
-}
-
-# --- Aliases (komma-præfiks ligesom yolay) ---
-
-export alias ,t  = tr
-export alias ,r  = rw
-export alias ,s  = sum
-export alias ,p  = proof
-export alias ,o  = tone
-export alias ,?  = status
-export alias ,m  = model
-
-# --- Overlay init ---
-
-export-env {
-    $env.COMMA_CFG = $env | get COMMA_CFG? | default {
-        provider: $PROVIDER
-        model: $MODEL
-        tools: $TOOLS
-    }
-    print $"(ansi cyan_bold)comma overlay(ansi reset) loaded · ($env.COMMA_CFG.provider)/($env.COMMA_CFG.model) · sprog: (ansi yellow_bold)tr rw sum proof tone(ansi reset)"
 }

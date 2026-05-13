@@ -1,41 +1,41 @@
-# comma · publish — konvertér markdown til publicerbare formater.
+# comma · publish — convert markdown to publishable formats.
 #
-# Dependencies (skal være i $PATH):
+# Dependencies (must be on $PATH):
 #   pandoc — universal document converter
-#   typst  — moderne typesetting (bruges som PDF-engine for smuk typografi)
+#   typst  — modern typesetting (used as the PDF engine for nice typography)
 #
-# Brug:
-#   open artikel.md | to-pdf artikel.pdf --title "Min artikel"
-#   open artikel.md | to-html artikel.html
-#   open artikel.md | to-docx artikel.docx --author "Lennart Kiil"
-#   open artikel.md | preview              # tmp PDF + åbn i Preview
-#   open artikel.md | publish out.pdf      # generisk dispatch via filendelse
+# Usage:
+#   open article.md | to-pdf article.pdf --title "My article"
+#   open article.md | to-html article.html
+#   open article.md | to-docx article.docx --author "Lennart Kiil"
+#   open article.md | preview              # temp PDF + open in viewer
+#   open article.md | pub out.pdf          # generic dispatch by file extension
 #
-# Designvalg:
-# - Input forventes at være markdown (eller plain tekst — pandoc spiser begge).
-# - Skrives altid til fil (PDF/DOCX er ikke pipe-venlige).
-# - --pdf-engine=typst som default for PDF: hurtigere og smukkere end LaTeX.
-# - Pipe-input via $in; argument-text fungerer også (som de andre comma-filer).
+# Design choices:
+# - Input is expected to be markdown (or plain text — pandoc swallows both).
+# - Always writes to a file (PDF/DOCX are not pipe-friendly).
+# - --pdf-engine=typst as the default: faster and prettier than LaTeX.
+# - Pipe input via $in; argument text also works (like the other comma files).
 
 def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
     if $piped == null {
-        error make {msg: "publish: pipe en streng ind eller giv tekst som argument"}
+        error make {msg: "publish: pipe a string in or pass text as an argument"}
     }
     if ($piped | describe) == "string" { return $piped }
     if ($piped | describe) == "list<string>" { return ($piped | str join "\n") }
-    error make {msg: $"publish: pipe-input skal være tekst, ikke (($piped | describe)) — brug `open --raw fil`"}
+    error make {msg: $"publish: pipe input must be text, not (($piped | describe)) — use `open --raw file`"}
 }
 
-# Verificér at en ekstern kommando er tilgængelig — fejler klart hvis ikke.
+# Verify that an external command is available — fail clearly if not.
 def require [cmd: string] {
     if (which $cmd | is-empty) {
-        error make {msg: $"publish: '($cmd)' ikke fundet i PATH. Installer med `brew install ($cmd)`."}
+        error make {msg: $"publish: '($cmd)' not found in PATH. Install with `brew install ($cmd)`."}
     }
 }
 
-# Saml pandoc metadata-args fra title/author/date.
+# Build pandoc metadata args from title/author/date.
 def meta-args [title: any, author: any, date: any]: nothing -> list<string> {
     mut args = []
     if $title != null  { $args = ($args | append ["--metadata" $"title=($title)"]) }
@@ -44,12 +44,12 @@ def meta-args [title: any, author: any, date: any]: nothing -> list<string> {
     $args
 }
 
-# Markdown → PDF via pandoc, med typst som default pdf-engine.
+# Markdown → PDF via pandoc, using typst as the default pdf-engine.
 #
-#   open artikel.md | to-pdf artikel.pdf
-#   "# Hej\n\nVerden" | to-pdf udkast.pdf --title "Mit udkast" --author "LK"
+#   open article.md | to-pdf article.pdf
+#   "# Hi\n\nWorld" | to-pdf draft.pdf --title "My draft" --author "LK"
 export def to-pdf [
-    out: path                  # outputfil (typisk .pdf)
+    out: path                  # output file (typically .pdf)
     --title: string
     --author: string
     --date: string
@@ -70,21 +70,21 @@ export def to-pdf [
     $args = ($args | append (meta-args $title $author $date))
     if $template != null { $args = ($args | append ["--template" $template]) }
     $src | ^pandoc ...$args
-    print $"(ansi green)skrev ($out)(ansi reset)"
+    print $"(ansi green)wrote ($out)(ansi reset)"
 }
 
 # Markdown → standalone HTML.
 #
-#   open artikel.md | to-html artikel.html
-#   open artikel.md | to-html artikel.html --css style.css
+#   open article.md | to-html article.html
+#   open article.md | to-html article.html --css style.css
 export def to-html [
     out: path
     --title: string
     --author: string
     --date: string
-    --css: path                # ekstern stylesheet
+    --css: path                # external stylesheet
     --template (-t): path
-    --no-standalone            # uddrag-fragment uden <html>/<head>
+    --no-standalone            # emit a fragment without <html>/<head>
     ...text: string
 ] {
     require pandoc
@@ -100,18 +100,18 @@ export def to-html [
     if $css != null { $args = ($args | append ["--css" $css]) }
     if $template != null { $args = ($args | append ["--template" $template]) }
     $src | ^pandoc ...$args
-    print $"(ansi green)skrev ($out)(ansi reset)"
+    print $"(ansi green)wrote ($out)(ansi reset)"
 }
 
 # Markdown → DOCX.
 #
-#   open referat.md | to-docx referat.docx --author "LK"
+#   open minutes.md | to-docx minutes.docx --author "LK"
 export def to-docx [
     out: path
     --title: string
     --author: string
     --date: string
-    --reference-doc: path      # docx skabelon med custom styles
+    --reference-doc: path      # docx template with custom styles
     ...text: string
 ] {
     require pandoc
@@ -125,12 +125,12 @@ export def to-docx [
     $args = ($args | append (meta-args $title $author $date))
     if $reference_doc != null { $args = ($args | append ["--reference-doc" $reference_doc]) }
     $src | ^pandoc ...$args
-    print $"(ansi green)skrev ($out)(ansi reset)"
+    print $"(ansi green)wrote ($out)(ansi reset)"
 }
 
 # Markdown → EPUB.
 #
-#   open bog.md | to-epub bog.epub --title "Min bog" --author "LK"
+#   open book.md | to-epub book.epub --title "My book" --author "LK"
 export def to-epub [
     out: path
     --title: string
@@ -152,13 +152,13 @@ export def to-epub [
     if $cover_image != null { $args = ($args | append ["--epub-cover-image" $cover_image]) }
     if $css != null { $args = ($args | append ["--css" $css]) }
     $src | ^pandoc ...$args
-    print $"(ansi green)skrev ($out)(ansi reset)"
+    print $"(ansi green)wrote ($out)(ansi reset)"
 }
 
-# Markdown → Typst-kildekode (.typ). Nyttig hvis du vil tweake typst-syntaks
-# manuelt før kompilering.
+# Markdown → Typst source (.typ). Useful when you want to tweak typst
+# syntax manually before compiling.
 #
-#   open artikel.md | to-typst artikel.typ
+#   open article.md | to-typst article.typ
 export def to-typst [
     out: path
     --title: string
@@ -176,29 +176,30 @@ export def to-typst [
     ]
     $args = ($args | append (meta-args $title $author $date))
     $src | ^pandoc ...$args
-    print $"(ansi green)skrev ($out)(ansi reset)"
+    print $"(ansi green)wrote ($out)(ansi reset)"
 }
 
-# Kompilér en eksisterende .typ-fil til PDF via typst direkte (uden pandoc).
+# Compile an existing .typ file to PDF via typst directly (no pandoc).
 #
-#   typst-compile artikel.typ artikel.pdf
+#   typst-compile article.typ article.pdf
 export def typst-compile [
-    input: path                # .typ kildefil
-    output: path               # .pdf outputfil
-    --root: path               # root-mappe for include-relative stier
+    input: path                # .typ source file
+    output: path               # .pdf output file
+    --root: path               # root directory for include-relative paths
 ] {
     require typst
     mut args = ["compile" $input $output]
     if $root != null { $args = ($args | append ["--root" $root]) }
     ^typst ...$args
-    print $"(ansi green)skrev ($output)(ansi reset)"
+    print $"(ansi green)wrote ($output)(ansi reset)"
 }
 
-# Render til midlertidig PDF og åbn i systemets default-app (Preview på macOS).
-# Ingen permanent fil tilbage — perfekt til hurtigt udseende-tjek.
+# Render to a temporary PDF and open in the system default app
+# (Preview on macOS). No permanent file left behind — perfect for a
+# quick visual check.
 #
-#   open udkast.md | preview
-#   open udkast.md | preview --title "Udkast v3"
+#   open draft.md | preview
+#   open draft.md | preview --title "Draft v3"
 export def preview [
     --title: string
     --author: string
@@ -210,16 +211,16 @@ export def preview [
     let tmp = mktemp --tmpdir --suffix .pdf
     $src | to-pdf $tmp --title $title --author $author --engine $engine
     ^open $tmp
-    print $"(ansi attr_dimmed)\(midlertidig: ($tmp)\)(ansi reset)"
+    print $"(ansi attr_dimmed)\(temp: ($tmp)\)(ansi reset)"
 }
 
-# Generisk dispatch: vælger format baseret på output-filens extension.
-# (Hedder `pub` fordi nu-moduler ikke må eksportere kommando med samme
-# navn som modulet selv.)
+# Generic dispatch: picks the format from the output file extension.
+# (Named `pub` because nu modules cannot export a command with the same
+# name as the module itself.)
 #
-#   open artikel.md | pub ud.pdf
-#   open artikel.md | pub ud.html
-#   open artikel.md | pub ud.docx --author "LK"
+#   open article.md | pub out.pdf
+#   open article.md | pub out.html
+#   open article.md | pub out.docx --author "LK"
 export def pub [
     out: path
     --title: string
@@ -239,6 +240,6 @@ export def pub [
         "docx" => ($src | to-docx $out --title $title --author $author --date $date)
         "epub" => ($src | to-epub $out --title $title --author $author --date $date)
         "typ"  => ($src | to-typst $out --title $title --author $author --date $date)
-        _ => (error make {msg: $"publish: ukendt extension '($ext)' — brug pdf | html | docx | epub | typ"})
+        _ => (error make {msg: $"publish: unknown extension '($ext)' — use pdf, html, docx, epub or typ"})
     }
 }

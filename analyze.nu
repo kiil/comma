@@ -1,13 +1,13 @@
-# comma · analyze — kommandoer der inspicerer tekst og returnerer indsigt.
+# comma · analyze — commands that inspect text and return insight.
 #
-# Output er stadig ren tekst (for pipe-venlighed), men det er en
-# beskrivelse AF inputtet — ikke en omskrivning af det.
+# Output is still plain text (for pipe-friendliness), but it is a
+# description OF the input — not a rewrite of it.
 #
-# Analyse-kommandoerne her er enten deterministiske (stats, freq, lix, …)
-# eller LLM-baserede uden tools (detect, sentiment, keywords, entities,
-# readability, classify). Verifikationsopgaver der kræver web_search
-# (factcheck, quotes, claims) lever i validate.nu med eget eget tool-sæt.
-# Overstyres via $env.COMMA_ANALYZE_CFG.
+# The analyze commands here are either deterministic (stats, freq, lix, …)
+# or LLM-backed without tools (detect, sentiment, keywords, entities,
+# readability, classify). Verification tasks that need web_search
+# (factcheck, quotes, claims) live in validate.nu with their own tool set.
+# Override via $env.COMMA_ANALYZE_CFG.
 
 const PROVIDER = "gemini"
 const MODEL    = "gemini-3.1-flash-lite"
@@ -23,16 +23,16 @@ def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
     if $piped == null {
-        error make {msg: "comma: pipe en streng ind eller giv tekst som argument"}
+        error make {msg: "comma: pipe a string in or pass text as an argument"}
     }
     if ($piped | describe) == "string" { return $piped }
     $piped | to text
 }
 
 def comma-call [system: string, user: string] {
-    # Analyze bruger sit eget COMMA_ANALYZE_CFG separat fra COMMA_CFG, så
-    # brugere kan vælge en stærkere model til klassifikations- og NLP-
-    # opgaver uden at flytte transform/generate over på samme model.
+    # Analyze uses its own COMMA_ANALYZE_CFG separate from COMMA_CFG so users
+    # can choose a stronger model for classification and NLP tasks without
+    # moving transform/generate over to the same model.
     let c = $env | get COMMA_ANALYZE_CFG? | default {
         provider: $PROVIDER
         model: $MODEL
@@ -57,14 +57,14 @@ def comma-call [system: string, user: string] {
         | str trim
 }
 
-# Deterministiske tællinger over en tekst. Bruger nu's str stats som basis
-# og tilføjer sætnings-, paragraf- og ordstatistik. Ingen LLM involveret —
-# samme tekst giver altid samme tal.
+# Deterministic counts over a text. Uses nu's `str stats` as a base and
+# adds sentence, paragraph and word statistics. No LLM involved — the
+# same text always produces the same numbers.
 #
 #   "Hello world. This is a test." | stats
-#   open artikel.md | stats --verbose
+#   open article.md | stats --verbose
 export def stats [
-    --verbose (-v)             # tilføj top-ord-frekvens og ordlængde-fordeling
+    --verbose (-v)             # also include top-word frequency and word-length extremes
     ...text: string
 ] {
     let piped = $in
@@ -95,20 +95,20 @@ export def stats [
     }
 }
 
-# Ord-frekvens-analyse. Deterministisk: downcase → split words → stopword-
-# filter → uniq -c → sort. Mønster fra kiils.dk's bible-analyse i nu.
+# Word-frequency analysis. Deterministic: downcase → split words → stopword
+# filter → uniq -c → sort. Pattern from kiils.dk's nushell bible analysis.
 #
-#   open bog.txt | freq
-#   open artikel.md | freq --lang da --top 20
+#   open book.txt | freq
+#   open article.md | freq --lang da --top 20
 #
-# Returnerer en tabel med kolonnerne value og count, sorteret faldende.
-# For meget store korpora kan polars-versionen i artiklen være ~10x hurtigere
-# — den er ikke inkluderet her for at undgå plugin-afhængighed.
+# Returns a table with columns `value` and `count`, sorted descending.
+# For very large corpora the polars version from the article can be ~10x
+# faster — it is not included here to avoid the plugin dependency.
 export def freq [
-    --lang (-l): string = "en" # stopword-sæt: en | da | none
-    --top (-n): int = 50       # antal mest hyppige ord (0 = alle)
-    --no-stop                  # spring stopword-filter helt over
-    --stop: list<string>       # brugerdefineret stopword-liste (overskriver --lang)
+    --lang (-l): string = "en" # stopword set: en | da | none
+    --top (-n): int = 50       # most frequent words (0 = all)
+    --no-stop                  # skip stopword filtering entirely
+    --stop: list<string>       # custom stopword list (overrides --lang)
     ...text: string
 ] {
     let piped = $in
@@ -128,8 +128,8 @@ export def freq [
     if $top > 0 { $counted | first $top } else { $counted }
 }
 
-# Indbyggede stopword-sæt. Holdt korte og pragmatiske —
-# brugere kan altid sende deres egen liste via --stop.
+# Built-in stopword sets. Kept short and pragmatic —
+# users can always pass their own list via --stop.
 def stopwords-for [lang: string]: nothing -> list<string> {
     match $lang {
         "en" => [
@@ -146,30 +146,30 @@ def stopwords-for [lang: string]: nothing -> list<string> {
             vi vil ville vor vores være været
         ]
         "none" => []
-        _ => (error make {msg: $"freq: ukendt --lang '($lang)' (brug en, da eller none)"})
+        _ => (error make {msg: $"freq: unknown --lang '($lang)' \(use en, da or none\)"})
     }
 }
 
-# Hjælper: tjek om en streng er en eksisterende filsti, sikkert (inline-tekst
-# kan indeholde tegn der får path exists til at fejle).
+# Helper: check whether a string is an existing filepath, safely (inline
+# text may contain characters that make `path exists` fail).
 def is-file [s: string]: nothing -> bool {
     if ($s | str length) > 4096 { return false }
     if ($s | str contains "\n") { return false }
     try { $s | path exists } catch { false }
 }
 
-# Hjælper: indlæs tekst — enten direkte eller fra en filsti.
+# Helper: load text — either directly or from a filepath.
 def load-text [s: string]: nothing -> string {
     if (is-file $s) { open --raw $s } else { $s }
 }
 
-# N-gram-frekvens. Default: bigrams. Stopword-filtrering kører FØR
-# vinduet, så grams ikke krydser fjernede ord.
+# N-gram frequency. Default: bigrams. Stopword filtering runs BEFORE the
+# windowing so grams don't span removed words.
 #
-#   open bog.txt | ngrams --n 2 --top 20
+#   open book.txt | ngrams --n 2 --top 20
 #   "the quick brown fox jumps over the lazy dog" | ngrams --n 3
 export def ngrams [
-    --n: int = 2               # vinduesstørrelse (2 = bigrams, 3 = trigrams)
+    --n: int = 2               # window size (2 = bigrams, 3 = trigrams)
     --top: int = 30
     --lang (-l): string = "en"
     --no-stop
@@ -188,13 +188,13 @@ export def ngrams [
     if $top > 0 { $counted | first $top } else { $counted }
 }
 
-# Keyword-in-context (KWIC). For hvert forekomst af et søgeord vises
-# et antal ord før og efter — klassisk concordance.
+# Keyword-in-context (KWIC). For every occurrence of a search term, show a
+# window of words before and after — the classic concordance view.
 #
-#   open bog.txt | kwic gud --window 6
+#   open book.txt | kwic god --window 6
 export def kwic [
-    keyword: string            # ordet at finde
-    --window (-w): int = 5     # antal ord på hver side
+    keyword: string            # the word to find
+    --window (-w): int = 5     # words on each side
     --case-sensitive
     ...text: string
 ] {
@@ -220,10 +220,10 @@ export def kwic [
         }
 }
 
-# Lix-læsbarhedstal (skandinavisk standard). Rent aritmetisk.
-# Lix = ord/sætninger + (lange_ord × 100 / ord), hvor "lang" = >6 bogstaver.
+# Lix readability score (Scandinavian standard). Pure arithmetic.
+# Lix = words/sentences + (long_words × 100 / words), where "long" = >6 letters.
 #
-#   open udkast.md | lix
+#   open draft.md | lix
 export def lix [
     ...text: string
 ] {
@@ -234,7 +234,7 @@ export def lix [
     let n_words = $words | length
     let n_sent = $sentences | length
     if $n_sent == 0 or $n_words == 0 {
-        error make {msg: "lix: ingen sætninger eller ord at måle"}
+        error make {msg: "lix: no sentences or words to measure"}
     }
     let long = $words | where {|w| ($w | str length) > 6} | length
     let asl = ($n_words / $n_sent)
@@ -242,11 +242,11 @@ export def lix [
     let lix = ($asl + $lwp)
     let bands = [
         [threshold, label];
-        [25,    "meget let (børnebog)"]
-        [35,    "let (skønlitteratur, ugeblade)"]
-        [45,    "middel (dagblade)"]
-        [55,    "svær (saglig prosa)"]
-        [99999, "meget svær (faglitteratur, lovtekst)"]
+        [25,    "very easy (children's book)"]
+        [35,    "easy (fiction, magazines)"]
+        [45,    "medium (daily newspapers)"]
+        [55,    "hard (non-fiction)"]
+        [99999, "very hard (academic, legal)"]
     ]
     let interp = $bands | where threshold > $lix | first | get label
     {
@@ -260,13 +260,13 @@ export def lix [
     }
 }
 
-# Find gentagne fraser i en tekst — fanger utilsigtet duplikeret prosa.
+# Find repeated phrases in a text — catches accidental prose duplication.
 #
-#   open udkast.md | repeats
-#   open lang.md | repeats --min-length 5 --min-count 3
+#   open draft.md | repeats
+#   open long.md | repeats --min-length 5 --min-count 3
 export def repeats [
-    --min-length (-l): int = 4 # minimum ord per frase
-    --min-count (-c): int = 2  # minimum antal forekomster
+    --min-length (-l): int = 4 # minimum words per phrase
+    --min-count (-c): int = 2  # minimum number of occurrences
     --top: int = 20
     ...text: string
 ] {
@@ -283,14 +283,14 @@ export def repeats [
     if $top > 0 { $counted | first $top } else { $counted }
 }
 
-# Sammenlign to tekster — distinctive ord for hver. Bruger smoothed
-# log-odds: positiv score = ordet er relativt hyppigere i A, negativ = i B.
-# Andet input kan være tekst-streng eller filsti.
+# Compare two texts — distinctive words for each. Uses smoothed log-odds:
+# positive score = word is relatively more frequent in A, negative = in B.
+# The `other` input can be a text string or a filepath.
 #
-#   open mit.md | compare reference.md
+#   open mine.md | compare reference.md
 #   "..." | compare "..." --top 20 --lang da
 export def compare [
-    other: string              # tekst eller filsti
+    other: string              # text or filepath
     --top (-n): int = 15
     --lang (-l): string = "en"
     --no-stop
@@ -305,7 +305,7 @@ export def compare [
     let a_total = $a_words | length
     let b_total = $b_words | length
     if $a_total == 0 or $b_total == 0 {
-        error make {msg: "compare: en af teksterne er tom"}
+        error make {msg: "compare: one of the texts is empty"}
     }
     let a_freq = $a_words | uniq -c
     let b_freq = $b_words | uniq -c
@@ -326,9 +326,9 @@ export def compare [
     }
 }
 
-# Hapax legomena — ord der kun forekommer én gang. Stylometrisk signal.
+# Hapax legomena — words that appear exactly once. Stylometric signal.
 #
-#   open novelle.md | hapax
+#   open novel.md | hapax
 export def hapax [
     --lang (-l): string = "en"
     --no-stop
@@ -345,9 +345,9 @@ export def hapax [
         | sort
 }
 
-# Type-token-ratio (leksikalsk variation). 1.0 = hvert ord er unikt.
+# Type-token ratio (lexical variation). 1.0 = every word is unique.
 #
-#   open udkast.md | ttr
+#   open draft.md | ttr
 export def ttr [
     --lang (-l): string = "en"
     --no-stop
@@ -359,7 +359,7 @@ export def ttr [
     let words = $src | str downcase | split words | where {|w| not ($w in $stop_list)}
     let tokens = $words | length
     if $tokens == 0 {
-        error make {msg: "ttr: ingen ord at måle"}
+        error make {msg: "ttr: no words to measure"}
     }
     let types = $words | uniq | length
     {
@@ -369,13 +369,13 @@ export def ttr [
     }
 }
 
-# Jaccard-lighed mellem to tekster via k-shingles (k ord ad gangen).
-# Returnerer score i [0,1] — højere = mere ens.
+# Jaccard similarity between two texts via k-shingles (k words at a time).
+# Returns a score in [0,1] — higher = more similar.
 #
-#   open kapitel1.md | similar kapitel2.md --k 4
+#   open chapter1.md | similar chapter2.md --k 4
 export def similar [
-    other: string              # tekst eller filsti
-    --k: int = 3               # shingle-størrelse (ord)
+    other: string              # text or filepath
+    --k: int = 3               # shingle size (words)
     ...text: string
 ] {
     let piped = $in
@@ -397,9 +397,9 @@ export def similar [
     }
 }
 
-# Split tekst i sætninger som en liste — komponerer godt med andre kommandoer.
+# Split text into sentences as a list — composes well with other commands.
 #
-#   open artikel.md | sentences | each {|s| $s | lix}
+#   open article.md | sentences | each {|s| $s | lix}
 export def sentences [
     ...text: string
 ] {
@@ -410,9 +410,9 @@ export def sentences [
         | where ($it | is-not-empty)
 }
 
-# Split tekst i paragraffer som en liste.
+# Split text into paragraphs as a list.
 #
-#   open bog.md | paragraphs | each {|p| $p | stats}
+#   open book.md | paragraphs | each {|p| $p | stats}
 export def paragraphs [
     ...text: string
 ] {
@@ -423,10 +423,10 @@ export def paragraphs [
         | where ($it | is-not-empty)
 }
 
-# Regex-udtrækning af URLs, emails, hashtags eller @-mentions.
+# Regex extraction of URLs, emails, hashtags or @-mentions.
 #
 #   open notes.md | extract --kind url
-#   "tweet @somebody om #nushell" | extract --kind hashtag
+#   "tweet @somebody about #nushell" | extract --kind hashtag
 export def extract [
     --kind (-k): string = "url"  # url | email | hashtag | mention
     ...text: string
@@ -438,17 +438,17 @@ export def extract [
         "email"   => '(?P<m>[\w.+-]+@[\w-]+\.[\w.-]+)'
         "hashtag" => '(?P<m>#\w+)'
         "mention" => '(?P<m>@\w+)'
-        _ => (error make {msg: $"extract: ukendt --kind '($kind)' (brug url, email, hashtag eller mention)"})
+        _ => (error make {msg: $"extract: unknown --kind '($kind)' \(use url, email, hashtag or mention\)"})
     }
     $src | parse --regex $pattern | get m | uniq
 }
 
-# Detektér sproget af en tekst. Returnerer ISO-639-1-kode by default.
+# Detect the language of a text. Returns an ISO 639-1 code by default.
 #
 #   "god morgen" | detect           # => da
 #   "god morgen" | detect --name    # => Danish
 export def detect [
-    --name                     # returnér engelsk sprognavn i stedet for ISO-kode
+    --name                     # return the English language name instead of an ISO code
     ...text: string
 ] {
     let piped = $in
@@ -462,12 +462,12 @@ export def detect [
     comma-call $sys $src
 }
 
-# Sentiment-analyse. Default: ét ord (positive/neutral/negative).
+# Sentiment analysis. Default: one word (positive/neutral/negative).
 #
-#   "elsker det her produkt" | sentiment           # => positive
-#   "elsker det her produkt" | sentiment --score   # => positive (0.85)
+#   "love this product" | sentiment           # => positive
+#   "love this product" | sentiment --score   # => positive (0.85)
 export def sentiment [
-    --score                    # tilføj numerisk score i [-1, 1]
+    --score                    # include a numeric score in [-1, 1]
     ...text: string
 ] {
     let piped = $in
@@ -481,12 +481,12 @@ export def sentiment [
     comma-call $sys $src
 }
 
-# Udtræk nøgleord / nøglefraser fra en tekst.
+# Extract keywords / key phrases from a text.
 #
-#   open artikel.md | keywords
-#   keywords --count 5 "lang tekst..."
+#   open article.md | keywords
+#   keywords --count 5 "long text..."
 export def keywords [
-    --count (-n): int = 10     # antal nøgleord
+    --count (-n): int = 10     # number of keywords
     ...text: string
 ] {
     let piped = $in
@@ -495,12 +495,12 @@ export def keywords [
     comma-call $sys $src
 }
 
-# Udtræk navngivne entiteter (personer, steder, organisationer, datoer, beløb).
+# Extract named entities (people, places, organizations, dates, money).
 #
-#   open referat.md | entities
+#   open minutes.md | entities
 #   entities --kind person "..."
 export def entities [
-    --kind (-k): string        # filtrér: person | place | org | date | money
+    --kind (-k): string        # filter: person | place | org | date | money
     ...text: string
 ] {
     let piped = $in
@@ -514,9 +514,9 @@ export def entities [
     comma-call $sys $src
 }
 
-# Vurdér læsbarhed (sværhedsgrad, målgruppe, gennemsnitlig sætningslængde).
+# Assess readability (difficulty level, audience, key driver).
 #
-#   open udkast.md | readability
+#   open draft.md | readability
 export def readability [
     ...text: string
 ] {
@@ -530,20 +530,20 @@ Match the source language for the notes line; keep the keys in English."
     comma-call $sys $src
 }
 
-# Klassificér en tekst i én af de angivne kategorier.
+# Classify a text into one of the given categories.
 #
-#   "kan I sende mig en faktura?" | classify support sales billing
-#   classify --multi "spam phishing legit" "vind en gratis iPhone..."
+#   "can you send me an invoice?" | classify support sales billing
+#   classify --multi "spam phishing legit" "win a free iPhone..."
 export def classify [
-    --multi                    # tillad flere labels (komma-separeret output)
-    ...labels: string          # mulige labels (mindst 2)
+    --multi                    # allow multiple labels (comma-separated output)
+    ...labels: string          # candidate labels (at least 2)
 ] {
     let piped = $in
     if ($labels | length) < 2 {
-        error make {msg: "classify: angiv mindst to labels"}
+        error make {msg: "classify: provide at least two labels"}
     }
     if $piped == null {
-        error make {msg: "classify: pipe teksten der skal klassificeres ind"}
+        error make {msg: "classify: pipe in the text to be classified"}
     }
     let src = if ($piped | describe) == "string" { $piped } else { $piped | to text }
     let label_list = $labels | str join ", "
@@ -556,24 +556,24 @@ export def classify [
     comma-call $sys $src
 }
 
-# Samlet rapport: kører alle relevante analyze-kommandoer og returnerer
-# resultatet som ét struktureret record. Deterministiske analyser inkluderes
-# altid; LLM-baserede (sentiment, keywords, detect, readability) kan slås
-# fra med --no-llm for at undgå API-kald.
+# Aggregate report: runs every relevant analyze command and returns the
+# result as a single structured record. Deterministic analyses are always
+# included; LLM-backed ones (sentiment, keywords, detect, readability) can
+# be skipped with --no-llm to avoid API calls.
 #
-#   open artikel.md | report
-#   open kort.md | report --no-llm | to yaml
+#   open article.md | report
+#   open short.md | report --no-llm | to yaml
 #   "..." | report --lang da --top 10
 export def report [
-    --no-llm                   # spring LLM-baserede analyser over
-    --lang (-l): string = "en" # stopword-sæt til freq/ngrams/ttr/hapax
-    --top (-n): int = 15       # top-N for freq, ngrams og keywords
+    --no-llm                   # skip LLM-backed analyses
+    --lang (-l): string = "en" # stopword set for freq/ngrams/ttr/hapax
+    --top (-n): int = 15       # top-N for freq, ngrams and keywords
     ...text: string
 ] {
     let piped = $in
     let src = comma-input $piped $text
 
-    # Deterministisk (hurtigt, gratis)
+    # Deterministic (fast, free)
     let s = $src | stats
     let l = $src | lix
     let t = $src | ttr --lang $lang
@@ -622,8 +622,8 @@ export def report [
     }
 
     if not $no_llm {
-        # Hver LLM-kald wrappes individuelt: én transient fejl skal ikke
-        # vælte hele rapporten. Fejlende felter får værdien null.
+        # Each LLM call is wrapped individually: one transient failure must
+        # not bring down the entire report. Failing fields get null.
         let lang_detected = try { $src | detect --name } catch { null }
         let sent = try { $src | sentiment --score } catch { null }
         let kw = try {

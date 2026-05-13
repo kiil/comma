@@ -1,11 +1,11 @@
-# comma · generate — kommandoer der producerer ny tekst ud fra et input.
+# comma · generate — commands that produce new text from an input.
 #
-# I modsætning til transform.nu, hvor inputtet ER teksten der bearbejdes,
-# bruges inputtet her som brief, emne eller skelet for noget nyt der skrives.
+# Unlike transform.nu, where the input IS the text being processed, here the
+# input serves as a brief, topic or skeleton for something new to be written.
 #
-# Generate-kommandoerne kan trække kontekst ind fra IWE via --notes <key>
-# (forudsætter at research.nu's context-bridge er aktiv). Modellen får
-# noterne som faktuel grund-sandhed, ikke som tekst der skal omskrives.
+# Generate commands can pull context from IWE via --notes <key>
+# (requires research.nu's context bridge to be active). The model receives
+# the notes as factual ground truth, not as text to be rewritten.
 
 use research.nu context
 
@@ -32,7 +32,7 @@ def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
     if $piped == null {
-        error make {msg: "comma: pipe en streng ind eller giv tekst som argument"}
+        error make {msg: "comma: pipe a string in or pass text as an argument"}
     }
     if ($piped | describe) == "string" { return $piped }
     $piped | to text
@@ -59,8 +59,8 @@ def comma-call [system: string, user: string] {
         | str trim
 }
 
-# Hjælper: hvis --notes er angivet, henter vi IWE-kontekst via research-
-# bridgen og pakker den som baggrunds-blok foran selve system-prompten.
+# Helper: if --notes is set, retrieve IWE context via the research bridge
+# and wrap it as a background block in front of the system prompt.
 def with-notes [sys: string, notes: any, depth: int, shape: string] {
     if $notes == null { return $sys }
     let ctx = context $notes --depth $depth --shape $shape
@@ -73,18 +73,18 @@ def with-notes [sys: string, notes: any, depth: int, shape: string] {
 ($sys)"
 }
 
-# Skriv et udkast ud fra en kort brief.
+# Write a draft from a short brief.
 #
-#   "blogpost om kaffe-extraction" | draft
-#   draft --words 200 "produktbeskrivelse for støvler i regnvejr"
-#   "blogpost om espresso" | draft --notes espresso-essentials
+#   "blog post about coffee extraction" | draft
+#   draft --words 200 "product description for rain boots"
+#   "blog post about espresso" | draft --notes espresso-essentials
 export def draft [
-    --words (-w): int          # ca. antal ord (model-bestemt hvis udeladt)
-    --lang (-l): string        # output-sprog (default: samme som briefen)
-    --notes: string            # IWE note-key — hentes som baggrund via context
-    --notes-depth: int = 2     # inclusion-link depth ned i hierarkiet
+    --words (-w): int          # approximate word count (model-decided if omitted)
+    --lang (-l): string        # output language (default: same as the brief)
+    --notes: string            # IWE note key — pulled in as background via context
+    --notes-depth: int = 2     # inclusion-link depth into the hierarchy
     --notes-shape: string = "background"  # background | brief | quotes-only
-    ...brief: string           # brief inline (ellers via pipe)
+    ...brief: string           # brief inline (or via pipe)
 ] {
     let piped = $in
     let src = comma-input $piped $brief
@@ -95,17 +95,17 @@ export def draft [
     comma-call $sys_final $src
 }
 
-# Udvid kort-noter, bullets eller stikord til sammenhængende prosa.
+# Expand short notes, bullets or fragments into connected prose.
 #
-#   "- mødte Anna\n- talte om Q3\n- aftalt opfølgning fredag" | expand
-#   expand --style email "tak for mødet, send slides, book opfølgning"
-#   "intro om kaffe" | expand --notes espresso-essentials
+#   "- met Anna\n- discussed Q3\n- follow-up Friday" | expand
+#   expand --style email "thanks for the meeting, send slides, book follow-up"
+#   "intro about coffee" | expand --notes espresso-essentials
 export def expand [
-    --style (-s): string       # f.eks. "email", "rapportafsnit", "blogpost"
-    --notes: string            # IWE note-key — hentes som baggrund
+    --style (-s): string       # e.g. "email", "report section", "blog post"
+    --notes: string            # IWE note key — pulled in as background
     --notes-depth: int = 2
     --notes-shape: string = "background"
-    ...bullets: string         # bullets/stikord inline (ellers via pipe)
+    ...bullets: string         # bullets/fragments inline (or via pipe)
 ] {
     let piped = $in
     let src = comma-input $piped $bullets
@@ -115,14 +115,14 @@ export def expand [
     comma-call $sys_final $src
 }
 
-# Foreslå titler/overskrifter til en tekst.
+# Propose titles/headlines for a text.
 #
-#   open artikel.md | title
-#   title --count 10 --style clickbait "lang tekst..."
+#   open article.md | title
+#   title --count 10 --style clickbait "long text..."
 export def title [
-    --count (-n): int = 5      # antal forslag
-    --style: string            # f.eks. "neutral", "clickbait", "akademisk", "SEO"
-    --notes: string            # IWE note-key — hentes som baggrund
+    --count (-n): int = 5      # number of candidates
+    --style: string            # e.g. "neutral", "clickbait", "academic", "SEO"
+    --notes: string            # IWE note key — pulled in as background
     --notes-depth: int = 2
     --notes-shape: string = "background"
     ...text: string
@@ -135,14 +135,14 @@ export def title [
     comma-call $sys_final $src
 }
 
-# Brainstorm idéer omkring et emne.
+# Brainstorm ideas around a topic.
 #
-#   "navne til en ny kaffe-bar i Aarhus" | ideas
-#   ideas --count 20 "features til en CLI-todo-app"
-#   "vinklinger på en historie om kaffe" | ideas --notes espresso-essentials
+#   "names for a new coffee bar in Aarhus" | ideas
+#   ideas --count 20 "features for a CLI todo app"
+#   "angles for a story about coffee" | ideas --notes espresso-essentials
 export def ideas [
-    --count (-n): int = 10     # antal idéer
-    --notes: string            # IWE note-key — hentes som baggrund/inspiration
+    --count (-n): int = 10     # number of ideas
+    --notes: string            # IWE note key — pulled in as background/inspiration
     --notes-depth: int = 2
     --notes-shape: string = "background"
     ...topic: string
@@ -154,15 +154,15 @@ export def ideas [
     comma-call $sys_final $src
 }
 
-# Generér spørgsmål til en tekst eller et emne (interview, FAQ, læring).
+# Generate questions about a text or topic (interview, FAQ, learning).
 #
 #   open whitepaper.md | ask
-#   ask --count 8 --kind interview "ny CTO der starter på mandag"
-#   "hvad mangler vi i forskningen?" | ask --notes espresso-essentials --kind socratic
+#   ask --count 8 --kind interview "new CTO starting on Monday"
+#   "what is the research missing?" | ask --notes espresso-essentials --kind socratic
 export def ask [
-    --count (-n): int = 8      # antal spørgsmål
+    --count (-n): int = 8      # number of questions
     --kind (-k): string = "open"  # "open" | "faq" | "interview" | "socratic"
-    --notes: string            # IWE note-key — hentes som baggrund
+    --notes: string            # IWE note key — pulled in as background
     --notes-depth: int = 2
     --notes-shape: string = "background"
     ...source: string

@@ -161,4 +161,4 @@ The command is named `pub` rather than `publish` because nushell does not allow 
 - Reads markdown from pipe (preferred) or `...text` positional.
 - Rejects non-string pipe input (e.g. `open file.md` AST) with an error suggesting `open --raw`.
 - Writes to the specified output file.
-- Prints a success line on success: `skrev <path>` (Danish — yes, that's a minor quirk).
+- Prints a success line on success: `wrote <path>`.

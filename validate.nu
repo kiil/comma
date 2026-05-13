@@ -1,16 +1,16 @@
-# comma · validate — verifikation mod virkeligheden.
+# comma · validate — verification against reality.
 #
-# Hvor analyze inspicerer tekst som tekst (statistik, klassifikation,
-# læsbarhed), så stiller validate spørgsmålet: er det her sandt? Det
-# kræver opslag, kilder, og bedre dømmekraft end de øvrige LLM-kald.
+# Where analyze inspects text as text (statistics, classification,
+# readability), validate asks: is this true? That requires lookups,
+# sources, and stronger reasoning than the other LLM calls.
 #
-# Tre kommandoer:
-#   factcheck  — verificér faktuelle påstande mod web-kilder
-#   quotes     — verificér ordlyd og tilskrivelse af citater
-#   claims     — udtræk diskrete påstande (deterministisk forarbejde)
+# Three commands:
+#   factcheck  — verify factual claims against web sources
+#   quotes     — verify quote wording and attribution
+#   claims     — extract discrete claims (preprocessing step)
 #
-# Default-model er stærkere end resten af comma og har tools slået til.
-# Overstyres via $env.COMMA_VALIDATE_CFG.
+# The default model is stronger than the rest of comma and has tools
+# enabled. Override via $env.COMMA_VALIDATE_CFG.
 
 const PROVIDER = "gemini"
 const MODEL    = "gemini-3-pro-preview"
@@ -26,16 +26,16 @@ def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
     if $piped == null {
-        error make {msg: "validate: pipe en streng ind eller giv tekst som argument"}
+        error make {msg: "validate: pipe a string in or pass text as an argument"}
     }
     if ($piped | describe) == "string" { return $piped }
     $piped | to text
 }
 
 def comma-call [system: string, user: string] {
-    # Validate ignorerer $env.COMMA_CFG og bruger sit eget setup. Tools er
-    # SLÅET TIL by default — uden web_search ville factcheck/quotes blot
-    # hallucinere citationer.
+    # Validate ignores $env.COMMA_CFG and uses its own setup. Tools are ON
+    # by default — without web_search, factcheck/quotes would just
+    # hallucinate citations.
     let c = $env | get COMMA_VALIDATE_CFG? | default {
         provider: $PROVIDER
         model: $MODEL
@@ -60,13 +60,13 @@ def comma-call [system: string, user: string] {
         | str trim
 }
 
-# Fact-check påstande i en tekst. Slår op via web_search.
+# Fact-check claims in a text. Looks them up via web_search.
 #
-#   open artikel.md | factcheck
-#   "Danmark har 12 millioner indbyggere" | factcheck
-#   factcheck --strict "..."       # markér selv små unøjagtigheder
+#   open article.md | factcheck
+#   "Denmark has 12 million inhabitants" | factcheck
+#   factcheck --strict "..."       # flag even small inaccuracies
 export def factcheck [
-    --strict (-s)              # vær striks ved tal, datoer, citater
+    --strict (-s)              # be strict about numbers, dates, quotations
     ...text: string
 ] {
     let piped = $in
@@ -88,10 +88,11 @@ Match the source language for claim text; keep verdict labels in English."
     comma-call $sys $src
 }
 
-# Verificér citater: er de korrekte, og er de tilskrevet rette person/kilde?
+# Verify quotations: are they accurate, and attributed to the right
+# person/source?
 #
-#   open tale.md | quotes
-#   "Som Einstein sagde: 'Gud spiller ikke terninger'" | quotes
+#   open speech.md | quotes
+#   "As Einstein said: 'God does not play dice'" | quotes
 export def quotes [
     ...text: string
 ] {
@@ -113,10 +114,10 @@ If no quotes are present, return exactly: \"no quotes found\"."
     comma-call $sys $src
 }
 
-# Udtræk diskrete påstande fra en tekst — uden at vurdere dem.
-# Nyttig som forarbejde til factcheck eller debat-forberedelse.
-# Tools er ikke nødvendige til denne kommando, men vi bruger samme
-# config for sammenhæng.
+# Extract discrete claims from a text — without assessing them.
+# Useful as preprocessing for factcheck or for debate preparation.
+# Tools are not strictly required for this command, but we use the same
+# config for consistency.
 #
 #   open essay.md | claims
 export def claims [

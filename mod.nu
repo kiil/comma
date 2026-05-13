@@ -1,29 +1,34 @@
-# comma - opinionated sprog-overlay til yoke
+# comma — opinionated language overlay for yoke
 #
-# yolay.nu er en generel agent-REPL. comma er det modsatte: et stramt
-# sæt sprog-kommandoer der hver returnerer KUN den bearbejdede tekst.
-# Ingen samtale-ctx, ingen værktøjer, ingen markdown-pynt — bare tekst
-# ind, tekst ud, klar til pipe.
+# yolay.nu is a general agent REPL. comma is its opposite: a tight set of
+# language commands that each return ONLY the processed text. No conversation
+# context, no tools, no markdown decoration — just text in, text out, ready
+# to pipe.
 #
 # Quick start:
 #   overlay use comma
 #   "Hello, world" | tr da
-#   "denne tekst er for lang og snørklet" | rw "kortere og klarere"
+#   "this text is too long and convoluted" | rw "shorter and clearer"
 #   open notat.md | sum
-#   "blogpost om kaffe-extraction" | draft --words 200
-#   "elsker det her produkt" | sentiment
+#   "blog post about coffee extraction" | draft --words 200
+#   "love this product" | sentiment
 #
-# Filer:
-#   transform.nu — tr, rw, sum, proof, tone     (tekst ind → omformet tekst ud)
-#   generate.nu  — draft, expand, title, ideas, ask  (brief/emne → ny tekst)
-#   analyze.nu   — detect, sentiment, keywords, entities, readability, classify
+# Files:
+#   transform.nu — tr, rw, sum, proof, tone       (text in → rewritten text out)
+#   generate.nu  — draft, expand, title, ideas, ask  (brief/topic → new text)
+#   analyze.nu   — stats, freq, lix, … + detect, sentiment, keywords, entities,
+#                  readability, classify
+#   validate.nu  — factcheck, quotes, claims (verification with web_search)
+#   research.nu  — fetch, meta, links, feeds, distill, cite, context
+#   pipeline.nu  — polish (the critic loop)
+#   publish.nu   — to-pdf, to-html, to-docx, to-epub, to-typst, preview, pub
 #
-# Designprincipper:
-# - Hver kommando er stateless. Ingen $env.YO_CTX. Hver invokation er én tur.
-# - Default tools=none. Sprogopgaver må ikke kalde shell/web/kode.
-# - Output er ren tekst uden citationstegn, indledninger eller forklaringer.
-# - Pipeline er førsteklasses input. Positionsargumenter er kun til korte
-#   inline-strenge.
+# Design principles:
+# - Every command is stateless. No $env.YO_CTX. Each invocation is one turn.
+# - Default tools=none. Language tasks may not call shell/web/code.
+# - Output is plain text — no quotation marks, preambles or explanations.
+# - Pipeline input is first-class. Positional arguments are for short inline
+#   strings only.
 
 export use transform.nu *
 export use generate.nu *
@@ -47,7 +52,7 @@ def comma-cfg [] {
     }
 }
 
-# Vis nuværende config og en kort liste over kommandoer.
+# Print the current config and a short list of commands.
 export def status [] {
     let c = comma-cfg
     print $"(ansi cyan_bold)comma(ansi reset) · ($c.provider)/($c.model) · tools: ($c.tools)"
@@ -60,10 +65,10 @@ export def status [] {
     print $"(ansi attr_dimmed)pipeline:  polish(ansi reset)"
     print $"(ansi attr_dimmed)publish:   to-pdf · to-html · to-docx · to-epub · to-typst · typst-compile · preview · pub(ansi reset)"
     print $"(ansi attr_dimmed)research:  fetch · meta · links · feeds · distill · cite · context(ansi reset)"
-    print $"(ansi attr_dimmed)           \(validate: gemini-3-pro-preview + web_search,nu — overstyr via COMMA_VALIDATE_CFG\)(ansi reset)"
+    print $"(ansi attr_dimmed)           \(validate: gemini-3-pro-preview + web_search,nu — override via COMMA_VALIDATE_CFG\)(ansi reset)"
 }
 
-# Skift model/provider for resten af sessionen.
+# Change model/provider for the rest of the session.
 #
 #   model claude-sonnet-4-6 --provider anthropic
 #   model gpt-4o --provider openai
@@ -81,7 +86,7 @@ export def --env model [
     print $"(ansi attr_dimmed)now: ($updated.provider)/($updated.model)(ansi reset)"
 }
 
-# --- Aliases (komma-præfiks ligesom yolay) ---
+# --- Aliases (comma-prefix, like yolay) ---
 
 # transform
 export alias ,t  = tr
@@ -143,7 +148,7 @@ export alias ,mt = meta
 export alias ,lk = links
 export alias ,fd = feeds
 
-# meta
+# session
 export alias ,?  = status
 export alias ,m  = model
 
@@ -156,5 +161,5 @@ export-env {
         tools: $TOOLS
     }
     print $"(ansi cyan_bold)comma overlay(ansi reset) loaded · ($env.COMMA_CFG.provider)/($env.COMMA_CFG.model)"
-    print $"(ansi attr_dimmed)transform · generate · analyze — ,? for liste(ansi reset)"
+    print $"(ansi attr_dimmed)transform · generate · analyze — ,? for list(ansi reset)"
 }

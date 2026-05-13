@@ -1,7 +1,7 @@
-# comma · transform — kommandoer der omformer eksisterende tekst.
+# comma · transform — commands that rewrite existing text.
 #
-# Hver kommando tager tekst ind (via pipe eller argument) og returnerer
-# en omformet udgave af samme tekst. Ingen samtale-ctx, ingen tools.
+# Each command takes text in (via pipe or argument) and returns a rewritten
+# version of that text. No conversation context, no tools.
 
 const PROVIDER = "gemini"
 const MODEL    = "gemini-3.1-flash-lite-preview"
@@ -26,7 +26,7 @@ def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
     if $piped == null {
-        error make {msg: "comma: pipe en streng ind eller giv tekst som argument"}
+        error make {msg: "comma: pipe a string in or pass text as an argument"}
     }
     if ($piped | describe) == "string" { return $piped }
     $piped | to text
@@ -53,17 +53,17 @@ def comma-call [system: string, user: string] {
         | str trim
 }
 
-# Oversæt tekst til et mål-sprog.
+# Translate text to a target language.
 #
 #   "Hello world" | tr da
 #   "Hej" | tr --formal en
-#   tr fransk "god morgen"
+#   tr french "good morning"
 export def tr [
-    target: string             # mål-sprog: ISO-kode (da, en, fr, ...) eller navn (dansk, engelsk)
-    --from: string             # kilde-sprog (auto hvis udeladt)
-    --formal                   # brug formel/De-form hvis sproget skelner
-    --casual                   # brug uformel/du-form
-    ...text: string            # tekst inline (ellers via pipe)
+    target: string             # target language: ISO code (da, en, fr, ...) or name (Danish, English)
+    --from: string             # source language (auto-detected if omitted)
+    --formal                   # use the formal register where the language distinguishes
+    --casual                   # use the informal register
+    ...text: string            # text inline (or via pipe)
 ] {
     let piped = $in
     let src = comma-input $piped $text
@@ -77,14 +77,14 @@ export def tr [
     comma-call $sys $src
 }
 
-# Omskriv tekst efter en kort instruktion. Bevarer kerneindhold.
+# Rewrite text according to a short instruction. Preserves core content.
 #
-#   "lang snørklet sætning" | rw "kortere"
-#   open udkast.md | rw "mere direkte og aktiv stemme"
-#   rw "som en LinkedIn-post" "vi har lanceret et nyt produkt..."
+#   "long convoluted sentence" | rw "shorter"
+#   open draft.md | rw "more direct, active voice"
+#   rw "as a LinkedIn post" "we just launched a new product..."
 export def rw [
-    instruction: string        # hvordan teksten skal omskrives
-    ...text: string            # tekst inline (ellers via pipe)
+    instruction: string        # how the text should be rewritten
+    ...text: string            # text inline (or via pipe)
 ] {
     let piped = $in
     let src = comma-input $piped $text
@@ -92,14 +92,14 @@ export def rw [
     comma-call $sys $src
 }
 
-# Opsummer tekst. Default: tæt prosa-resumé, samme sprog som kilden.
+# Summarize text. Default: dense prose summary, same language as the source.
 #
-#   open artikel.md | sum
-#   sum --bullets "lang tekst..."
-#   sum --max 3 "..."          # max 3 sætninger
+#   open article.md | sum
+#   sum --bullets "long text..."
+#   sum --max 3 "..."          # max 3 sentences
 export def sum [
-    --bullets (-b)             # output som punktliste i stedet for prosa
-    --max (-m): int            # max antal sætninger/punkter (default: model-bestemt, typisk 3-5)
+    --bullets (-b)             # output as bullet list instead of prose
+    --max (-m): int            # max number of sentences/bullets (default: model-decided, typically 3-5)
     ...text: string
 ] {
     let piped = $in
@@ -111,13 +111,13 @@ export def sum [
     comma-call $sys $src
 }
 
-# Korrekturlæsning: ret stavning, grammatik, tegnsætning. Bevar stemme,
-# struktur og ordvalg. Returnerer KUN den rettede tekst.
+# Proofreading: fix spelling, grammar, punctuation. Preserve voice,
+# structure and word choice. Returns ONLY the corrected text.
 #
 #   "Jeg har set tre hunde igår" | proof
-#   open udkast.md | proof | save -f udkast.md
+#   open draft.md | proof | save -f draft.md
 export def proof [
-    --strict (-s)              # ret også klodset ordstilling og uklarheder
+    --strict (-s)              # also fix awkward word order and unclear phrasing
     ...text: string
 ] {
     let piped = $in
@@ -131,16 +131,16 @@ export def proof [
     comma-call $sys $src
 }
 
-# Skift tone på teksten uden at ændre indhold.
+# Shift the tone of the text without changing content.
 #
-#   "vi skal mødes kl 14" | tone formal
+#   "we should meet at 2" | tone formal
 #   "Dear Sir/Madam, ..." | tone casual
-#   tone executive "her er en lang teknisk forklaring..."
+#   tone executive "here is a long technical explanation..."
 #
-# Kendte stilarter: formal, casual, executive, friendly, neutral, direct,
-# diplomatic. Andre værdier sendes ordret videre til modellen.
+# Known styles: formal, casual, executive, friendly, neutral, direct,
+# diplomatic. Any other value is passed verbatim to the model.
 export def tone [
-    style: string              # tone-navn (se ovenfor) eller fri beskrivelse
+    style: string              # tone name (see above) or freeform description
     ...text: string
 ] {
     let piped = $in

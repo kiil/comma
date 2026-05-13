@@ -1,29 +1,29 @@
-# comma · research — hentning, destillation og bridge til generate.
+# comma · research — fetching, distillation, and the bridge to generate.
 #
-# Persistens-laget er IWE (https://iwe.md). Comma rør ikke notebooks direkte
-# — output piper brugeren selv til `iwe attach <key>` eller `iwe new <key>`
-# med deres egen template-konfiguration.
+# The persistence layer is IWE (https://iwe.md). comma does not touch
+# notebooks directly — the user pipes output to `iwe attach <key>` or
+# `iwe new <key>` with their own template configuration.
 #
-# Dependencies (skal være i $PATH):
-#   reader  — https://github.com/mrusme/reader (Mozilla Readability i Go)
+# Dependencies (must be on $PATH):
+#   reader  — https://github.com/mrusme/reader (Mozilla Readability in Go)
 #             go install github.com/mrusme/reader@latest
 #
-# Yderligere dependencies:
-#   query web / query webpage-info  — nu_plugin_query, brugt af meta/links/feeds
-#                                     og fetch --frontmatter til at læse HTML-
-#                                     metadata, links og feeds.
+# Additional dependencies:
+#   query web / query webpage-info  — nu_plugin_query, used by meta/links/feeds
+#                                     and fetch --frontmatter to read HTML
+#                                     metadata, links and feeds.
 #                                     cargo install nu_plugin_query && plugin add ~/.cargo/bin/nu_plugin_query
 #
-# Valgfri dependencies (kun til --js):
-#   http browse  — nu_plugin_browse, kører headless Chromium for JS-renderet HTML
+# Optional dependencies (only for --js):
+#   http browse  — nu_plugin_browse, runs headless Chromium for JS-rendered HTML
 #                  cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse
-#                  Kræver chrome eller chromium installeret.
+#                  Requires Chrome or Chromium to be installed.
 #
-# Designvalg:
-# - Alle kommandoer returnerer ren markdown på stdout. Persistens er brugerens valg.
-# - reader's indbyggede HTTP er default — den klarer 80%+ af alm. blogs/artikler.
-# - --js falder tilbage til http browse → reader (stdin) når reader's plain
-#   HTTP rammer en JS-renderet shell-side.
+# Design choices:
+# - All commands return plain markdown on stdout. Persistence is the user's call.
+# - reader's built-in HTTP is the default — it handles 80%+ of normal blogs/articles.
+# - --js falls back to http browse → reader (stdin) when reader's plain HTTP
+#   gets a JS-rendered shell page.
 
 use transform.nu sum
 
@@ -39,7 +39,7 @@ const PURITY_RULE = "Output requirements (strict):
 
 def require [cmd: string] {
     if (which $cmd | is-empty) {
-        error make {msg: $"research: '($cmd)' ikke fundet i PATH. Installer det først."}
+        error make {msg: $"research: '($cmd)' not found in PATH. Install it first."}
     }
 }
 
@@ -47,11 +47,11 @@ def comma-input [piped: any, args: list<string>] {
     let joined = $args | str join " "
     if ($args | is-not-empty) { return $joined }
     if $piped == null {
-        error make {msg: "research: pipe en streng ind eller giv tekst som argument"}
+        error make {msg: "research: pipe a string in or pass text as an argument"}
     }
     if ($piped | describe) == "string" { return $piped }
     if ($piped | describe) == "list<string>" { return ($piped | str join "\n") }
-    error make {msg: $"research: pipe-input skal være tekst, ikke (($piped | describe)) — brug `open --raw fil`"}
+    error make {msg: $"research: pipe input must be text, not (($piped | describe)) — use `open --raw file`"}
 }
 
 def comma-cfg [] {
@@ -83,32 +83,32 @@ def comma-call [system: string, user: string] {
         | str trim
 }
 
-# Hent en URL og ekstrahér hovedindholdet som markdown via reader (Mozilla
-# Readability-port i Go). Reader har egen HTTP-klient, så vi behøver
-# normalt ikke curl eller plugins.
+# Fetch a URL and extract its main content as markdown via reader (the
+# Mozilla Readability port in Go). reader has its own HTTP client, so we
+# normally don't need curl or plugins.
 #
-#   fetch "https://example.com/artikel"
-#   fetch "https://spa.com/page" --js          # JS-renderet: brug headless Chromium
-#   fetch "https://eksempel.dk" --no-extract   # spring readability over (rå markdown)
+#   fetch "https://example.com/article"
+#   fetch "https://spa.com/page" --js          # JS-rendered: use headless Chromium
+#   fetch "https://example.com" --no-extract   # skip readability (raw markdown)
 #
-# Typisk research-flow:
-#   fetch <url> | iwe attach research-kaffe
+# Typical research flow:
+#   fetch <url> | iwe attach research-coffee
 #   fetch <url> --js | distill | iwe attach espresso-essentials
 export def fetch [
-    url: string                # URL der skal hentes
-    --js                       # brug headless browser til JS-renderet sider
-    --no-extract               # spring readability-ekstraktion over
+    url: string                # URL to fetch
+    --js                       # use headless browser for JS-rendered pages
+    --no-extract               # skip readability extraction
     --frontmatter              # prepend YAML frontmatter via query webpage-info
     --image-mode: string = "none"  # none | ansi | ansi-dither | kitty | sixel
-    --wait: duration = 2sec    # kun --js: vent på JS-rendering
+    --wait: duration = 2sec    # only with --js: JS-rendering wait time
 ] {
     require reader
 
     mut reader_args = ["-o" "--image-mode" $image_mode]
     if $no_extract { $reader_args = ($reader_args | append "--no-readability") }
 
-    # Når --frontmatter eller --js bruges, henter vi HTML separat så vi kan
-    # videresende den til BÅDE reader og query webpage-info i ét trin.
+    # When --frontmatter or --js is used, we fetch HTML separately so we can
+    # forward it to BOTH reader and query webpage-info in a single call.
     let need_html = $js or $frontmatter
     let html = if $need_html {
         if $js { http browse --wait $wait $url } else { http get $url }
@@ -129,8 +129,8 @@ export def fetch [
     }
 }
 
-# Hjælper: byg YAML-frontmatter fra et webpage-info-record. Springer
-# tomme/null felter over så frontmatter forbliver kompakt.
+# Helper: build YAML frontmatter from a webpage-info record. Empty/null
+# fields are skipped so the frontmatter stays compact.
 def build-frontmatter [info: record, url: string] {
     let sch = $info | get --optional schema_org | get --optional 0.value
     let meta = $info | get --optional meta
@@ -161,15 +161,15 @@ def build-frontmatter [info: record, url: string] {
     $"---\n($body)\n---"
 }
 
-# Strukturerede metadata for en URL via webpage-info. Returnerer et flat
-# record med de mest nyttige felter: title, source, language, description,
-# published, author, feed, plus rå opengraph og schema_org.
+# Structured metadata for a URL via webpage-info. Returns a flat record
+# with the most useful fields: title, source, language, description,
+# published, modified, author, feed, plus raw opengraph and schema_org.
 #
 #   meta "https://example.com/article"
 #   meta "https://example.com/article" --js
 export def meta [
     url: string
-    --js                       # brug headless browser
+    --js                       # use headless browser
     --wait: duration = 2sec
 ] {
     let html = if $js {
@@ -200,14 +200,14 @@ export def meta [
     }
 }
 
-# Udvinde outbound links fra en side. Returnerer en tabel med url og text.
-# --external filtrerer til links der peger udenfor host'en.
+# Extract outbound links from a page. Returns a table with url and text.
+# --external filters to links pointing outside the page's host.
 #
 #   links "https://example.com/article"
 #   links "https://example.com/article" --external
 export def links [
     url: string
-    --external                 # kun links med fremmed host
+    --external                 # only links with a foreign host
     --js
     --wait: duration = 2sec
 ] {
@@ -225,9 +225,9 @@ export def links [
     }
 }
 
-# Udvinde RSS/Atom-feeds fra en side. webpage-info returnerer kun ét feed-felt;
-# vi supplerer med <link rel="alternate" type="application/...+xml"> via query web
-# så vi fanger sider der annoncerer flere feeds.
+# Extract RSS/Atom feeds from a page. webpage-info returns only a single
+# feed field; we supplement with <link rel="alternate" type="application/...+xml">
+# via query web so we catch pages that advertise multiple feeds.
 #
 #   feeds "https://example.com"
 export def feeds [
@@ -241,8 +241,8 @@ export def feeds [
         http get $url
     }
     let primary = $html | query webpage-info | get --optional feed
-    # query web med --attribute [a b] returnerer en liste-pr-element af
-    # attribut-værdier i samme rækkefølge. Vi får [type, href] per <link>.
+    # `query web --attribute [a b]` returns a list-per-element of attribute
+    # values in the same order. We get [type, href] per <link>.
     let alternates = try {
         $html
             | query web --document --query 'link[rel="alternate"]' --attribute [type href]
@@ -253,7 +253,7 @@ export def feeds [
     let combined = ($primary_list | append $alternates)
         | where {|x| $x != null and $x != "" }
         | uniq
-    # Gør relative URLer absolutte mod input-url
+    # Resolve relative URLs against the input URL.
     let parsed = $url | url parse
     let origin = $parsed.scheme + "://" + $parsed.host
     $combined | each {|f|
@@ -263,12 +263,12 @@ export def feeds [
     }
 }
 
-# Bearbejd rå capture (artikel, transskription, notat) til en struktureret
-# studie-note med claims, citater, åbne spørgsmål og keywords. Output er
-# markdown klar til `iwe attach <key>`.
+# Process raw captured material (article, transcript, notes) into a
+# structured study note with claims, quotes, open questions and keywords.
+# Output is markdown ready for `iwe attach <key>`.
 #
 #   fetch <url> | distill | iwe attach espresso-essentials
-#   open --raw artikel.md | distill
+#   open --raw article.md | distill
 export def distill [
     ...text: string
 ] {
@@ -304,14 +304,14 @@ Rules:
     comma-call $sys $src
 }
 
-# Ekstrahér verbatim citater fra en tekst der handler om et givet emne.
-# Returnerer markdown blockquotes med kort kontekst.
+# Extract verbatim quotes from a text that are about a given topic.
+# Returns markdown blockquotes with brief context lines.
 #
-#   open referat.md | cite "økonomisk vækst"
-#   fetch <url> | cite "automatisering" --count 5
+#   open minutes.md | cite "economic growth"
+#   fetch <url> | cite "automation" --count 5
 export def cite [
-    topic: string              # emnet citaterne skal handle om
-    --count (-n): int = 10     # max antal citater
+    topic: string              # the topic the quotes should be about
+    --count (-n): int = 10     # max number of quotes
     ...text: string
 ] {
     let piped = $in
@@ -328,20 +328,21 @@ Match the source language."
     comma-call $sys $src
 }
 
-# Hent kontekst fra IWE for en given note-key og form den til et prompt-
-# egnet baggrundsblok. Bridge-kommandoen mellem research/IWE og generate.
+# Retrieve context from IWE for a given note key and shape it into a
+# prompt-friendly background block. The bridge command between
+# research/IWE and generate.
 #
 #   context espresso-essentials --depth 2 --shape brief
 #
 # Shapes:
-#   background  — rå markdown fra `iwe retrieve` (default)
-#   brief       — kører `sum --max 10` på output (kondenserer hierarkiet)
-#   quotes-only — ekstrahér kun blockquotes (>) fra hierarkiet
+#   background  — raw markdown from `iwe retrieve` (default)
+#   brief       — runs `sum --max 10` on the output (condenses the hierarchy)
+#   quotes-only — extracts only blockquotes (>) from the hierarchy
 export def context [
-    key: string                # IWE note-key (slug)
-    --depth (-d): int = 2      # inclusion-link depth (børn)
-    --parent-context (-c): int = 1  # niveauer af forælder-kontekst (op)
-    --max-chars: int = 16000   # hård cap (~4000 tokens) for at undgå prompt-overflow
+    key: string                # IWE note key (slug)
+    --depth (-d): int = 2      # inclusion-link depth (children)
+    --parent-context (-c): int = 1  # levels of parent context (up)
+    --max-chars: int = 16000   # hard cap (~4000 tokens) to avoid prompt overflow
     --shape: string = "background"  # background | brief | quotes-only
 ] {
     require iwe
@@ -350,10 +351,10 @@ export def context [
         "background"  => $raw
         "brief"       => ($raw | sum --max 10)
         "quotes-only" => ($raw | lines | where ($it | str trim | str starts-with ">") | str join "\n")
-        _ => (error make {msg: $"context: ukendt --shape '($shape)' \(brug background, brief, quotes-only\)"})
+        _ => (error make {msg: $"context: unknown --shape '($shape)' \(use background, brief, quotes-only\)"})
     }
     if ($shaped | str length) > $max_chars {
-        ($shaped | str substring 0..$max_chars) + "\n\n[…trunkeret…]"
+        ($shaped | str substring 0..$max_chars) + "\n\n[…truncated…]"
     } else {
         $shaped
     }

@@ -23,6 +23,8 @@ transform · generate · analyze — ,? for list
 
 Type `,?` (or `status`) at any time for the current command inventory.
 
+For longer documentation, see [`docs/`](docs/) — organized as tutorials, how-to guides, reference, and explanation following the [Diátaxis framework](https://diataxis.fr/).
+
 ## Dependencies
 
 Required:

@@ -47,9 +47,11 @@ def comma-call [system: string, user: string] {
         | lines
         | each {|l| try { $l | from json } catch { null } }
         | compact
-    $records
-        | where { $in | get role? | $in == "assistant" }
-        | last
+    let assistant = $records | where { $in | get role? | $in == "assistant" } | last
+    if $assistant == null {
+        error make {msg: $"comma-call: no assistant response from yoke \(provider=($c.provider), model=($c.model)\). The model may be unavailable, rate-limited, or the request was interrupted."}
+    }
+    $assistant
         | get content
         | each {|b| if ($b | get type?) == "text" { $b.text } else { null } }
         | compact

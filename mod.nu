@@ -57,7 +57,7 @@ export def status [] {
     print $"(ansi attr_dimmed)analyze\(LLM\): detect · sentiment · keywords · entities · readability · classify · factcheck · quotes · claims(ansi reset)"
     print $"(ansi attr_dimmed)pipeline:  polish(ansi reset)"
     print $"(ansi attr_dimmed)publish:   to-pdf · to-html · to-docx · to-epub · to-typst · typst-compile · preview · pub(ansi reset)"
-    print $"(ansi attr_dimmed)research:  fetch · distill · cite · context(ansi reset)"
+    print $"(ansi attr_dimmed)research:  fetch · meta · links · feeds · distill · cite · context(ansi reset)"
     print $"(ansi attr_dimmed)           \(analyze: gemini-3-pro-preview + web_search,nu — overstyr via COMMA_ANALYZE_CFG\)(ansi reset)"
 }
 
@@ -137,6 +137,9 @@ export alias ,fe = fetch
 export alias ,di = distill
 export alias ,ci = cite
 export alias ,cx = context
+export alias ,mt = meta
+export alias ,lk = links
+export alias ,fd = feeds
 
 # meta
 export alias ,?  = status

@@ -39,7 +39,8 @@ Optional, per module:
 | publish | `pandoc` | Universal document converter (PDF, HTML, DOCX, EPUB) |
 | publish | `typst` | Default PDF engine (faster, nicer typography than LaTeX) |
 | research | `reader` | Mozilla Readability port in Go for clean article extraction. `go install github.com/mrusme/reader@latest` |
-| research | `nu_plugin_browse` | Headless Chromium for JS-rendered pages. Only needed for `fetch --js`. `cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse` |
+| research | `nu_plugin_query` | CSS-selector and `webpage-info` extraction. Used by `meta`, `links`, `feeds`, and `fetch --frontmatter`. `cargo install nu_plugin_query && plugin add ~/.cargo/bin/nu_plugin_query` |
+| research | `nu_plugin_browse` | Headless Chromium for JS-rendered pages. Only needed for `--js` flag on `fetch`/`meta`/`links`/`feeds`. `cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse` |
 | research | `iwe` | Markdown knowledge graph used as note persistence layer. https://iwe.md |
 | analyze (LLM) | network | `factcheck` and `quotes` use `web_search` via the analyze model |
 
@@ -154,7 +155,10 @@ Split into deterministic (cheap, offline) and LLM-backed (uses tools, costs toke
 
 | Command | Alias | What |
 |---|---|---|
-| `fetch <url>` | `,fe` | Mozilla Readability extraction via reader → markdown |
+| `fetch <url>` | `,fe` | Mozilla Readability extraction via reader → markdown (`--frontmatter` adds YAML preamble) |
+| `meta <url>` | `,mt` | Structured page metadata via `query webpage-info` |
+| `links <url>` | `,lk` | Outbound links (`--external` to filter to off-host) |
+| `feeds <url>` | `,fd` | RSS/Atom feeds advertised by the page |
 | `distill` | `,di` | Raw text → structured study note (claims, quotes, open questions, keywords) |
 | `cite <topic>` | `,ci` | LLM-extract verbatim quotes about a topic |
 | `context <key>` | `,cx` | `iwe retrieve` + prompt-shaping for generate |

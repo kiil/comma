@@ -45,9 +45,11 @@ def comma-call [system: string, user: string] {
         | lines
         | each {|l| try { $l | from json } catch { null } }
         | compact
-    $records
-        | where { $in | get role? | $in == "assistant" }
-        | last
+    let assistant = $records | where { $in | get role? | $in == "assistant" } | last
+    if $assistant == null {
+        error make {msg: $"comma-call: no assistant response from yoke \(provider=($c.provider), model=($c.model)\). The model may be unavailable, rate-limited, or the request was interrupted."}
+    }
+    $assistant
         | get content
         | each {|b| if ($b | get type?) == "text" { $b.text } else { null } }
         | compact
@@ -686,17 +688,22 @@ export def report [
     }
 
     if not $no_llm {
-        let lang_detected = $src | detect --name
-        let sent = $src | sentiment --score
-        let kw = $src | keywords --count $top | lines | each {|x| $x | str trim} | where ($it | is-not-empty)
-        let read = $src | readability
-        let read_parsed = $read | lines | reduce --fold {} {|line, acc|
-            let parts = $line | split column -c ": " key value
-            if ($parts | is-not-empty) {
-                let p = $parts | first
-                $acc | upsert ($p.key | str trim) ($p.value? | default "" | str trim)
-            } else { $acc }
-        }
+        # Hver LLM-kald wrappes individuelt: én transient fejl skal ikke
+        # vælte hele rapporten. Fejlende felter får værdien null.
+        let lang_detected = try { $src | detect --name } catch { null }
+        let sent = try { $src | sentiment --score } catch { null }
+        let kw = try {
+            $src | keywords --count $top | lines | each {|x| $x | str trim} | where ($it | is-not-empty)
+        } catch { null }
+        let read_parsed = try {
+            $src | readability | lines | reduce --fold {} {|line, acc|
+                let parts = $line | split column -c ": " key value
+                if ($parts | is-not-empty) {
+                    let p = $parts | first
+                    $acc | upsert ($p.key | str trim) ($p.value? | default "" | str trim)
+                } else { $acc }
+            }
+        } catch { null }
         $out = ($out | upsert llm {
             language: $lang_detected
             sentiment: $sent

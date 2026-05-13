@@ -13,7 +13,7 @@ Commands for capturing material, distilling it into structured notes, and bridgi
 Fetch a URL and extract the main content via Mozilla Readability (using the `reader` binary).
 
 ```
-fetch <url> [--js] [--no-extract] [--image-mode <string>] [--wait <duration>]
+fetch <url> [--js] [--no-extract] [--frontmatter] [--image-mode <string>] [--wait <duration>]
 ```
 
 | Flag | Default | What |
@@ -21,25 +21,105 @@ fetch <url> [--js] [--no-extract] [--image-mode <string>] [--wait <duration>]
 | `url` | required | URL to fetch |
 | `--js` | off | Use headless Chromium (`http browse` plugin) for JS-rendered pages |
 | `--no-extract` | off | Skip Readability extraction — return full-page markdown |
+| `--frontmatter` | off | Prepend YAML frontmatter (title, source, captured, language, published, author, …) via `query webpage-info` |
 | `--image-mode` | `none` | One of `none`, `ansi`, `ansi-dither`, `kitty`, `sixel` |
 | `--wait` | 2sec | JS-rendering wait time (only with `--js`) |
 
 **Dependencies:**
 
 - `reader` — `go install github.com/mrusme/reader@latest`
+- `nu_plugin_query` — used by `--frontmatter` (and by `meta`, `links`, `feeds`)
 - For `--js`: `nu_plugin_browse` plus Chrome/Chromium
 
-**Returns:** markdown on stdout.
+**Returns:** markdown on stdout. With `--frontmatter`, a `---`-fenced YAML block is prepended.
 
 **Example:**
 
 ```nu
 fetch "https://example.com/article"
 fetch "https://spa.example.com/page" --js
-fetch "https://example.com" --no-extract        # raw markdown without Readability
+fetch "https://example.com" --no-extract                  # raw markdown without Readability
+fetch "https://example.com" --frontmatter | iwe new -k article-source
 ```
 
 **Alias:** `,fe`
+
+## `meta`
+
+Structured metadata for a URL via `query webpage-info`. Returns a flat record with the most useful fields: title, source, language, description, published, modified, author, feed, plus raw `opengraph` and `schema_org`.
+
+```
+meta <url> [--js] [--wait <duration>]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `url` | required | URL to inspect |
+| `--js` | off | Use headless Chromium for JS-rendered pages |
+| `--wait` | 2sec | JS-rendering wait time |
+
+**Dependencies:** `nu_plugin_query`.
+
+**Example:**
+
+```nu
+meta "https://example.com/article" | reject opengraph schema_org
+meta "https://example.com" --js | to yaml
+```
+
+**Alias:** `,mt`
+
+## `links`
+
+Extract outbound links from a page. Returns a table with `url` and `text` columns.
+
+```
+links <url> [--external] [--js] [--wait <duration>]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `url` | required | URL to scan |
+| `--external` | off | Filter to links pointing outside the page's own host |
+| `--js` | off | Use headless Chromium |
+| `--wait` | 2sec | JS-rendering wait time |
+
+**Dependencies:** `nu_plugin_query`.
+
+**Example:**
+
+```nu
+links "https://example.com/article" --external | first 10
+```
+
+**Alias:** `,lk`
+
+## `feeds`
+
+Extract advertised RSS/Atom feed URLs from a page. Combines `webpage-info`'s primary feed with any `<link rel="alternate" type="application/...+xml">` references. Relative URLs are resolved against the input host.
+
+```
+feeds <url> [--js] [--wait <duration>]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `url` | required | URL to scan |
+| `--js` | off | Use headless Chromium |
+| `--wait` | 2sec | JS-rendering wait time |
+
+**Dependencies:** `nu_plugin_query`.
+
+**Example:**
+
+```nu
+feeds "https://blog.rust-lang.org/"
+# → https://blog.rust-lang.org/feed.xml
+```
+
+Empty list means the page does not advertise a feed in its HTML — the site may still have one (e.g. at `/feed.xml` or `/atom.xml`) but you would need to check directly.
+
+**Alias:** `,fd`
 
 ## `distill`
 

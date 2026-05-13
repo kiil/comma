@@ -8,6 +8,12 @@
 #   reader  — https://github.com/mrusme/reader (Mozilla Readability i Go)
 #             go install github.com/mrusme/reader@latest
 #
+# Yderligere dependencies:
+#   query web / query webpage-info  — nu_plugin_query, brugt af meta/links/feeds
+#                                     og fetch --frontmatter til at læse HTML-
+#                                     metadata, links og feeds.
+#                                     cargo install nu_plugin_query && plugin add ~/.cargo/bin/nu_plugin_query
+#
 # Valgfri dependencies (kun til --js):
 #   http browse  — nu_plugin_browse, kører headless Chromium for JS-renderet HTML
 #                  cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse
@@ -65,9 +71,11 @@ def comma-call [system: string, user: string] {
         | lines
         | each {|l| try { $l | from json } catch { null } }
         | compact
-    $records
-        | where { $in | get role? | $in == "assistant" }
-        | last
+    let assistant = $records | where { $in | get role? | $in == "assistant" } | last
+    if $assistant == null {
+        error make {msg: $"comma-call: no assistant response from yoke \(provider=($c.provider), model=($c.model)\). The model may be unavailable, rate-limited, or the request was interrupted."}
+    }
+    $assistant
         | get content
         | each {|b| if ($b | get type?) == "text" { $b.text } else { null } }
         | compact
@@ -90,6 +98,7 @@ export def fetch [
     url: string                # URL der skal hentes
     --js                       # brug headless browser til JS-renderet sider
     --no-extract               # spring readability-ekstraktion over
+    --frontmatter              # prepend YAML frontmatter via query webpage-info
     --image-mode: string = "none"  # none | ansi | ansi-dither | kitty | sixel
     --wait: duration = 2sec    # kun --js: vent på JS-rendering
 ] {
@@ -98,13 +107,159 @@ export def fetch [
     mut reader_args = ["-o" "--image-mode" $image_mode]
     if $no_extract { $reader_args = ($reader_args | append "--no-readability") }
 
-    if $js {
-        # http browse → stdin → reader
-        let html = http browse --wait $wait $url
+    # Når --frontmatter eller --js bruges, henter vi HTML separat så vi kan
+    # videresende den til BÅDE reader og query webpage-info i ét trin.
+    let need_html = $js or $frontmatter
+    let html = if $need_html {
+        if $js { http browse --wait $wait $url } else { http get $url }
+    } else { null }
+
+    let body = if $need_html {
         $html | ^reader ...$reader_args -
     } else {
-        # reader's egen HTTP
         ^reader ...$reader_args $url
+    }
+
+    if $frontmatter {
+        let info = $html | query webpage-info
+        let fm = build-frontmatter $info $url
+        $"($fm)\n\n($body)"
+    } else {
+        $body
+    }
+}
+
+# Hjælper: byg YAML-frontmatter fra et webpage-info-record. Springer
+# tomme/null felter over så frontmatter forbliver kompakt.
+def build-frontmatter [info: record, url: string] {
+    let sch = $info | get --optional schema_org | get --optional 0.value
+    let meta = $info | get --optional meta
+    let today = date now | format date "%Y-%m-%d"
+    let entries = [
+        {key: "title",       value: ($info | get --optional title)}
+        {key: "source",      value: $url}
+        {key: "captured",    value: $today}
+        {key: "language",    value: ($info | get --optional language)}
+        {key: "published",   value: (
+            $sch | get --optional datePublished
+            | default ($meta | get --optional "article:published_time")
+        )}
+        {key: "modified",    value: (
+            $sch | get --optional dateModified
+            | default ($meta | get --optional "article:modified_time")
+        )}
+        {key: "author",      value: ($sch | get --optional author | get --optional name)}
+        {key: "description", value: ($info | get --optional description)}
+    ]
+    let body = $entries
+        | where {|e| $e.value != null and $e.value != "" }
+        | each {|e|
+            let v = $e.value | into string | str replace --all "\"" "\\\""
+            $"($e.key): \"($v)\""
+        }
+        | str join "\n"
+    $"---\n($body)\n---"
+}
+
+# Strukturerede metadata for en URL via webpage-info. Returnerer et flat
+# record med de mest nyttige felter: title, source, language, description,
+# published, author, feed, plus rå opengraph og schema_org.
+#
+#   meta "https://example.com/article"
+#   meta "https://example.com/article" --js
+export def meta [
+    url: string
+    --js                       # brug headless browser
+    --wait: duration = 2sec
+] {
+    let html = if $js {
+        http browse --wait $wait $url
+    } else {
+        http get $url
+    }
+    let info = $html | query webpage-info
+    let sch = $info | get --optional schema_org | get --optional 0.value
+    let meta_tags = $info | get --optional meta
+    {
+        title: ($info | get --optional title)
+        source: ($info | get --optional url | default $url)
+        language: ($info | get --optional language)
+        description: ($info | get --optional description)
+        published: (
+            $sch | get --optional datePublished
+            | default ($meta_tags | get --optional "article:published_time")
+        )
+        modified: (
+            $sch | get --optional dateModified
+            | default ($meta_tags | get --optional "article:modified_time")
+        )
+        author: ($sch | get --optional author | get --optional name)
+        feed: ($info | get --optional feed)
+        opengraph: ($info | get --optional opengraph)
+        schema_org: ($info | get --optional schema_org)
+    }
+}
+
+# Udvinde outbound links fra en side. Returnerer en tabel med url og text.
+# --external filtrerer til links der peger udenfor host'en.
+#
+#   links "https://example.com/article"
+#   links "https://example.com/article" --external
+export def links [
+    url: string
+    --external                 # kun links med fremmed host
+    --js
+    --wait: duration = 2sec
+] {
+    let html = if $js {
+        http browse --wait $wait $url
+    } else {
+        http get $url
+    }
+    let all = $html | query webpage-info | get links
+    if not $external { return $all }
+    let host = try { $url | url parse | get host } catch { "" }
+    $all | where {|l|
+        let lhost = try { $l.url | url parse | get host } catch { "" }
+        $lhost != "" and $lhost != $host
+    }
+}
+
+# Udvinde RSS/Atom-feeds fra en side. webpage-info returnerer kun ét feed-felt;
+# vi supplerer med <link rel="alternate" type="application/...+xml"> via query web
+# så vi fanger sider der annoncerer flere feeds.
+#
+#   feeds "https://example.com"
+export def feeds [
+    url: string
+    --js
+    --wait: duration = 2sec
+] {
+    let html = if $js {
+        http browse --wait $wait $url
+    } else {
+        http get $url
+    }
+    let primary = $html | query webpage-info | get --optional feed
+    # query web med --attribute [a b] returnerer en liste-pr-element af
+    # attribut-værdier i samme rækkefølge. Vi får [type, href] per <link>.
+    let alternates = try {
+        $html
+            | query web --document --query 'link[rel="alternate"]' --attribute [type href]
+            | where {|pair| (($pair | get 0? | default "") | str contains "xml") }
+            | each {|pair| $pair | get 1? | default "" }
+    } catch { [] }
+    let primary_list = if $primary != null and $primary != "" { [$primary] } else { [] }
+    let combined = ($primary_list | append $alternates)
+        | where {|x| $x != null and $x != "" }
+        | uniq
+    # Gør relative URLer absolutte mod input-url
+    let parsed = $url | url parse
+    let origin = $parsed.scheme + "://" + $parsed.host
+    $combined | each {|f|
+        if ($f | str starts-with "http") { $f } else { (
+            if ($f | str starts-with "/") { $origin + $f } else { $f }
+        )}
     }
 }
 

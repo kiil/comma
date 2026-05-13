@@ -51,3 +51,4 @@ If you are new, start with [Getting started](tutorials/01-getting-started.md). I
 - [The critic loop](explanation/the-critic-loop.md)
 - [Deterministic vs. LLM](explanation/deterministic-vs-llm.md)
 - [Why IWE for note persistence](explanation/why-iwe.md)
+- [Appendix: NLP concepts behind analyze](explanation/appendix-nlp-concepts.md)

@@ -42,7 +42,7 @@ Optional, per module:
 | research | `nu_plugin_query` | CSS-selector and `webpage-info` extraction. Used by `meta`, `links`, `feeds`, and `fetch --frontmatter`. `cargo install nu_plugin_query && plugin add ~/.cargo/bin/nu_plugin_query` |
 | research | `nu_plugin_browse` | Headless Chromium for JS-rendered pages. Only needed for `--js` flag on `fetch`/`meta`/`links`/`feeds`. `cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse` |
 | research | `iwe` | Markdown knowledge graph used as note persistence layer. https://iwe.md |
-| analyze (LLM) | network | `factcheck` and `quotes` use `web_search` via the analyze model |
+| validate | network | `factcheck` and `quotes` use `web_search` |
 
 Commands that need a missing tool fail with a clear error pointing at the install command. The module loads regardless.
 
@@ -51,12 +51,13 @@ Commands that need a missing tool fail with a clear error pointing at the instal
 The five modules form a left-to-right pipeline. You rarely use all of them in one chain, but the flow is the mental model:
 
 ```
-research → generate → analyze → transform → publish
+research → generate → analyze/validate → transform → publish
 ```
 
 - **research** captures, distills and supplies factual context
 - **generate** writes new text from a brief, optionally grounded in research
-- **analyze** inspects existing text — statistics, frequencies, fact-checking
+- **analyze** inspects existing text — statistics, frequencies, classification
+- **validate** verifies text against reality — fact-checking, quote verification
 - **transform** rewrites existing text — translation, proofreading, tone shifts
 - **publish** renders finished text to PDF, HTML, DOCX, EPUB
 
@@ -137,7 +138,7 @@ Split into deterministic (cheap, offline) and LLM-backed (uses tools, costs toke
 | `extract --kind url\|email\|hashtag\|mention` | `,xt` | Regex extraction |
 | `report` | `,rt` | Combined report: stats + freq + lix + ttr + sentiment + keywords + readability + … |
 
-**LLM-backed** (uses `gemini-3-pro-preview` with `web_search` + `nu` tools by default):
+**LLM-backed** (uses `gemini-3.1-flash-lite` with no tools by default; override via `$env.COMMA_ANALYZE_CFG`):
 
 | Command | Alias | What |
 |---|---|---|
@@ -147,9 +148,16 @@ Split into deterministic (cheap, offline) and LLM-backed (uses tools, costs toke
 | `entities` | `,en` | Named entities with type tags |
 | `readability` | `,rd` | Qualitative reading level + audience |
 | `classify <labels>` | `,cl` | Pick best-fit label(s) |
+
+### validate.nu — verify text against reality
+
+Uses `gemini-3-pro-preview` with `web_search,nu` tools by default (override via `$env.COMMA_VALIDATE_CFG`). These commands need real web lookups — without them they would just hallucinate citations.
+
+| Command | Alias | What |
+|---|---|---|
 | `factcheck` | `,fc` | Verify claims against web sources |
 | `quotes` | `,qu` | Verify quotation wording and attribution |
-| `claims` | `,cm` | Extract distinct claims for downstream factchecking |
+| `claims` | `,cm` | Extract distinct claims (preprocessing for factcheck) |
 
 ### research.nu — capture, distill, bridge to IWE
 
@@ -228,9 +236,10 @@ open --raw polished.md | to-pdf espresso.pdf --title "Espresso essentials" --aut
 | Module | Provider | Model | Tools | Override via |
 |---|---|---|---|---|
 | transform, generate, research | gemini | gemini-3.1-flash-lite-preview | none | `$env.COMMA_CFG` |
-| analyze (LLM commands) | gemini | gemini-3-pro-preview | web_search, nu | `$env.COMMA_ANALYZE_CFG` |
+| analyze (LLM commands) | gemini | gemini-3.1-flash-lite | none | `$env.COMMA_ANALYZE_CFG` |
+| validate | gemini | gemini-3-pro-preview | web_search, nu | `$env.COMMA_VALIDATE_CFG` |
 
-The analyze module deliberately ignores `COMMA_CFG.tools` because commands like `factcheck` and `quotes` need real `web_search` to do anything more than hallucinate citations.
+The validate module has its own stronger model and tools enabled because `factcheck` and `quotes` need real `web_search` to do anything more than hallucinate citations.
 
 Change the global default for the session:
 
@@ -276,7 +285,8 @@ comma/
 ├── transform.nu    # tr, rw, sum, proof, tone
 ├── generate.nu     # draft, expand, title, ideas, ask (all support --notes)
 ├── analyze.nu      # stats, freq, lix, … + LLM analyzers + report
-├── research.nu     # fetch, distill, cite, context
+├── validate.nu     # factcheck, quotes, claims (web_search-enabled)
+├── research.nu     # fetch, meta, links, feeds, distill, cite, context
 ├── pipeline.nu     # polish (orchestrates analyze + transform + generate)
 └── publish.nu      # to-pdf, to-html, to-docx, to-epub, to-typst, preview, pub
 ```

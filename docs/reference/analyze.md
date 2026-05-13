@@ -6,9 +6,11 @@ nav_order: 3
 
 # Reference: analyze
 
-Commands that inspect text and return insight. Split into deterministic (free, offline) and LLM-backed (uses tools, costs tokens).
+Commands that inspect text and return insight. Split into deterministic (free, offline) and LLM-backed (text-only NLP, no tools).
 
-The LLM commands use `$env.COMMA_ANALYZE_CFG` (default: `gemini-3-pro-preview` with `web_search,nu` tools) instead of the main `COMMA_CFG`. See [configuration](configuration.md).
+The LLM commands use `$env.COMMA_ANALYZE_CFG` (default: `gemini-3.1-flash-lite` with no tools) instead of the main `COMMA_CFG`. See [configuration](configuration.md).
+
+Verification commands that need web search (`factcheck`, `quotes`, `claims`) live in their own [validate](validate.md) module with a stronger default model and tools enabled.
 
 ## Deterministic commands
 
@@ -323,44 +325,6 @@ Input text must come via pipe.
 
 **Alias:** `,cl`
 
-### `factcheck`
+## Verification commands
 
-Verify factual claims via `web_search`.
-
-```
-factcheck [--strict] [...text]
-```
-
-| Flag | Default | What |
-|---|---|---|
-| `-s, --strict` | off | Flag every claim including small numerical/chronological inaccuracies |
-
-Output format: one line per claim, `[<verdict>] <claim> — <evidence> (<source>)`. Verdicts: TRUE, FALSE, MISLEADING, UNVERIFIABLE.
-
-If no errors: returns exactly `OK — no errors found`.
-
-**Alias:** `,fc`
-
-### `quotes`
-
-Verify quotation wording and attribution via `web_search`.
-
-```
-quotes [...text]
-```
-
-Returns one block per quote: `quote`, `attribution`, `verdict` (VERIFIED, MISQUOTED, MISATTRIBUTED, FABRICATED, UNVERIFIABLE), `correction`, `source`.
-
-If no quotes: returns exactly `no quotes found`.
-
-**Alias:** `,qu`
-
-### `claims`
-
-Extract distinct claims for downstream factchecking. Does not verify them.
-
-```
-claims [...text]
-```
-
-**Alias:** `,cm`
+`factcheck`, `quotes` and `claims` moved to a separate [validate](validate.md) module so analyze can default to a lighter, tool-free model. See the validate reference for their signatures.

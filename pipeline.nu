@@ -19,6 +19,7 @@
 
 use transform.nu *
 use analyze.nu *
+use validate.nu *
 use generate.nu *
 
 # Iterativ kritiker-løkke: genererer evt. udkast, analyserer, patcher,

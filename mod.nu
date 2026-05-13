@@ -28,6 +28,7 @@
 export use transform.nu *
 export use generate.nu *
 export use analyze.nu *
+export use validate.nu *
 export use pipeline.nu *
 export use publish.nu *
 export use research.nu *
@@ -54,11 +55,12 @@ export def status [] {
     print $"(ansi attr_dimmed)generate:  draft · expand · title · ideas · ask(ansi reset)"
     print $"(ansi attr_dimmed)analyze:   stats · freq · ngrams · kwic · lix · repeats · compare · hapax · ttr · similar · report(ansi reset)"
     print $"(ansi attr_dimmed)           sentences · paragraphs · extract(ansi reset)"
-    print $"(ansi attr_dimmed)analyze\(LLM\): detect · sentiment · keywords · entities · readability · classify · factcheck · quotes · claims(ansi reset)"
+    print $"(ansi attr_dimmed)analyze\(LLM\): detect · sentiment · keywords · entities · readability · classify(ansi reset)"
+    print $"(ansi attr_dimmed)validate:  factcheck · quotes · claims(ansi reset)"
     print $"(ansi attr_dimmed)pipeline:  polish(ansi reset)"
     print $"(ansi attr_dimmed)publish:   to-pdf · to-html · to-docx · to-epub · to-typst · typst-compile · preview · pub(ansi reset)"
     print $"(ansi attr_dimmed)research:  fetch · meta · links · feeds · distill · cite · context(ansi reset)"
-    print $"(ansi attr_dimmed)           \(analyze: gemini-3-pro-preview + web_search,nu — overstyr via COMMA_ANALYZE_CFG\)(ansi reset)"
+    print $"(ansi attr_dimmed)           \(validate: gemini-3-pro-preview + web_search,nu — overstyr via COMMA_VALIDATE_CFG\)(ansi reset)"
 }
 
 # Skift model/provider for resten af sessionen.

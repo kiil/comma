@@ -3,14 +3,15 @@
 # Output er stadig ren tekst (for pipe-venlighed), men det er en
 # beskrivelse AF inputtet — ikke en omskrivning af det.
 #
-# I modsætning til transform/generate har analyze tools slået TIL by default
-# (web_search til opslag mod virkeligheden, nu til lokale lookups). Det er
-# nødvendigt for kommandoer som factcheck og quotes der ellers bare ville
-# hallucinere. Overstyres via $env.COMMA_CFG.tools om nødvendigt.
+# Analyse-kommandoerne her er enten deterministiske (stats, freq, lix, …)
+# eller LLM-baserede uden tools (detect, sentiment, keywords, entities,
+# readability, classify). Verifikationsopgaver der kræver web_search
+# (factcheck, quotes, claims) lever i validate.nu med eget eget tool-sæt.
+# Overstyres via $env.COMMA_ANALYZE_CFG.
 
 const PROVIDER = "gemini"
-const MODEL    = "gemini-3-pro-preview"
-const TOOLS    = "web_search,nu"
+const MODEL    = "gemini-3.1-flash-lite"
+const TOOLS    = "none"
 
 const PURITY_RULE = "Output requirements (strict):
 - Return ONLY the analysis result in the exact format requested.
@@ -29,10 +30,9 @@ def comma-input [piped: any, args: list<string>] {
 }
 
 def comma-call [system: string, user: string] {
-    # Analyze ignorerer $env.COMMA_CFG og bruger ALTID sit eget setup:
-    # gemini-3-pro-preview med web_search+nu. Ellers ville mod.nu's overlay-init
-    # (tools=none, flash-lite-modellen) gøre factcheck/quotes til ren
-    # hallucination. Overstyres bevidst via $env.COMMA_ANALYZE_CFG.
+    # Analyze bruger sit eget COMMA_ANALYZE_CFG separat fra COMMA_CFG, så
+    # brugere kan vælge en stærkere model til klassifikations- og NLP-
+    # opgaver uden at flytte transform/generate over på samme model.
     let c = $env | get COMMA_ANALYZE_CFG? | default {
         provider: $PROVIDER
         model: $MODEL
@@ -527,72 +527,6 @@ level: <one of: very easy, easy, medium, hard, very hard>
 audience: <a short noun phrase describing the typical reader, e.g. \"general adult reader\", \"university student\", \"domain expert\">
 notes: <one sentence on what drives the difficulty (sentence length, vocabulary, jargon, structure)>
 Match the source language for the notes line; keep the keys in English."
-    comma-call $sys $src
-}
-
-# Fact-check påstande i en tekst. Slår op via web_search.
-#
-#   open artikel.md | factcheck
-#   "Danmark har 12 millioner indbyggere" | factcheck
-#   factcheck --strict "..."       # markér selv små unøjagtigheder
-export def factcheck [
-    --strict (-s)              # vær striks ved tal, datoer, citater
-    ...text: string
-] {
-    let piped = $in
-    let src = comma-input $piped $text
-    let scope = if $strict {
-        "Flag every factual claim, including small numerical or chronological inaccuracies."
-    } else {
-        "Focus on substantive claims that would mislead a reader. Skip trivial paraphrasing."
-    }
-    let sys = $"You are a fact-checker with web_search. For each non-trivial factual claim in the user's text, verify it against authoritative sources via web_search. ($scope)
-
-Output one line per claim, in this exact format:
-[<verdict>] <claim> — <evidence or correction> (<source url or domain>)
-
-Verdicts: TRUE, FALSE, MISLEADING, UNVERIFIABLE.
-Order: most consequential errors first.
-If every claim checks out, return exactly the single line: \"OK — no errors found\".
-Match the source language for claim text; keep verdict labels in English."
-    comma-call $sys $src
-}
-
-# Verificér citater: er de korrekte, og er de tilskrevet rette person/kilde?
-#
-#   open tale.md | quotes
-#   "Som Einstein sagde: 'Gud spiller ikke terninger'" | quotes
-export def quotes [
-    ...text: string
-] {
-    let piped = $in
-    let src = comma-input $piped $text
-    let sys = "You are a quotation verifier with web_search. Find every quoted passage in the user's text (anything in quotation marks attributed to a person, work, or source). For each one, verify via web_search:
-1. Is the wording accurate?
-2. Is the attribution correct?
-3. Is the context appropriate (not a misattributed paraphrase, not stripped of meaning)?
-
-Output one block per quote separated by a blank line, in this exact format:
-quote: \"<the quote as it appears>\"
-attribution: <as given in the text>
-verdict: <one of: VERIFIED, MISQUOTED, MISATTRIBUTED, FABRICATED, UNVERIFIABLE>
-correction: <the accurate wording and source, or \"—\" if verdict is VERIFIED>
-source: <url or canonical reference>
-
-If no quotes are present, return exactly: \"no quotes found\"."
-    comma-call $sys $src
-}
-
-# Udtræk diskrete påstande fra en tekst — uden at vurdere dem.
-# Nyttig som forarbejde til factcheck eller debat-forberedelse.
-#
-#   open essay.md | claims
-export def claims [
-    ...text: string
-] {
-    let piped = $in
-    let src = comma-input $piped $text
-    let sys = "You are a claim extractor. List every distinct factual or evaluative claim the user's text makes — what the text asserts to be true, not background or framing. One claim per line, rephrased as a standalone declarative sentence (so it can be evaluated out of context). No numbering, no bullets, no hedging. Match the source language."
     comma-call $sys $src
 }
 

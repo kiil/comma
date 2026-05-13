@@ -1,7 +1,7 @@
 ---
 title: "configuration"
 parent: "Reference"
-nav_order: 7
+nav_order: 8
 ---
 
 # Reference: configuration
@@ -28,20 +28,38 @@ $env.COMMA_CFG = {provider: openai, model: gpt-4o, tools: none}
 
 ### `$env.COMMA_ANALYZE_CFG`
 
-Used by LLM commands in `analyze` (detect, sentiment, keywords, entities, readability, classify, factcheck, quotes, claims). Deliberately separated from `COMMA_CFG` so that `factcheck` and `quotes` can use `web_search` without forcing that on every transform.
+Used by LLM commands in `analyze` (detect, sentiment, keywords, entities, readability, classify). Separated from `COMMA_CFG` so analyze NLP can be tuned independently.
 
 | Field | Default | What |
 |---|---|---|
 | `provider` | `gemini` | Same options as `COMMA_CFG` |
-| `model` | `gemini-3-pro-preview` | A model with reliable tool-use |
-| `tools` | `web_search,nu` | Web search + nushell tool — needed for factcheck/quotes to do real verification |
-
-If unset, the analyze commands always use the defaults above — regardless of what `COMMA_CFG` says. This is intentional: setting `COMMA_CFG.tools = none` globally must not silently disable web search in factcheck.
+| `model` | `gemini-3.1-flash-lite` | Fast, cheap NLP — analyze tasks don't need a stronger model |
+| `tools` | `none` | No tools — analyze's commands are pure text-in, text-out |
 
 Override:
 
 ```nu
 $env.COMMA_ANALYZE_CFG = {
+    provider: anthropic
+    model: claude-haiku-4-5-20251001
+    tools: none
+}
+```
+
+### `$env.COMMA_VALIDATE_CFG`
+
+Used by `validate` commands (`factcheck`, `quotes`, `claims`). Separated because these need `web_search` to do real verification — without it they would hallucinate citations.
+
+| Field | Default | What |
+|---|---|---|
+| `provider` | `gemini` | Same options as `COMMA_CFG` |
+| `model` | `gemini-3-pro-preview` | A model with reliable tool use and stronger reasoning |
+| `tools` | `web_search,nu` | Web search + nushell tool |
+
+Override:
+
+```nu
+$env.COMMA_VALIDATE_CFG = {
     provider: anthropic
     model: claude-sonnet-4-6
     tools: web_search

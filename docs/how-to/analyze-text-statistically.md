@@ -150,7 +150,7 @@ Total sentence count (faster than reading `stats.sentences` if that's all you wa
 
 Everything on this page runs locally — no network, no tokens. The slowest operation is reading the file. For very large corpora (book-length), word-frequency operations take seconds; everything else is sub-second.
 
-If you want LLM-backed analyses (sentiment, named entities, factcheck, qualitative readability assessment), see [reference/analyze](../reference/analyze.md). They live in the same module but are marked separately.
+If you want LLM-backed analyses (sentiment, named entities, qualitative readability assessment), see [reference/analyze](../reference/analyze.md). For verification against external sources (fact-checking, quote verification, claim extraction), see [reference/validate](../reference/validate.md).
 
 ## Related
 

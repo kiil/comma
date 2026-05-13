@@ -38,7 +38,8 @@ If you are new, start with [Getting started](tutorials/01-getting-started.md). I
 
 - [transform](reference/transform.md) — rewrite existing text
 - [generate](reference/generate.md) — produce new text from a brief
-- [analyze](reference/analyze.md) — inspect text (deterministic + LLM)
+- [analyze](reference/analyze.md) — inspect text (deterministic + LLM NLP)
+- [validate](reference/validate.md) — verify text against reality
 - [research](reference/research.md) — capture, distill, IWE bridge
 - [pipeline](reference/pipeline.md) — polish (critic loop)
 - [publish](reference/publish.md) — render to PDF, HTML, DOCX, EPUB

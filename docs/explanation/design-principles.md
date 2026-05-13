@@ -38,7 +38,7 @@ This has practical consequences:
 
 - `polish` uses deterministic critics (`lix`, `repeats`) as its stop condition, with LLM critics layered on top. If we relied only on LLM critics, the loop would never stop — they always find *something*.
 - `report` defaults to including everything (deterministic + LLM) but offers `--no-llm` for the cost-conscious or offline workflow.
-- The `analyze` module is explicitly split in its reference doc and `status` output: deterministic commands are listed separately from LLM commands.
+- The `analyze` module is explicitly split in its reference doc and `status` output: deterministic commands are listed separately from LLM commands. Verification commands that need `web_search` were further split into a dedicated `validate` module so analyze's defaults stay light and tool-free.
 
 See [Deterministic vs. LLM](deterministic-vs-llm.md) for the longer discussion.
 

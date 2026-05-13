@@ -234,7 +234,7 @@ Returns nested records: `meta`, `readability`, `lexical`, `top_words`, `top_bigr
 
 ## LLM-backed commands
 
-These use `$env.COMMA_ANALYZE_CFG` and may make web requests.
+These use `$env.COMMA_ANALYZE_CFG` (default: `gemini-3.1-flash-lite`, no tools). They are pure text-in, text-out — no network access, no tool use.
 
 ### `detect`
 

@@ -107,6 +107,6 @@ open --raw draft.md \
 
 ## Dependencies
 
-`polish` imports from `transform.nu` (rw, proof), `analyze.nu` (lix, repeats, readability, factcheck, quotes) and `generate.nu` (draft, for `--brief`-only invocations). All imports happen at module load — no runtime cost.
+`polish` imports from `transform.nu` (rw, proof), `analyze.nu` (lix, repeats, readability), `validate.nu` (factcheck, quotes) and `generate.nu` (draft, for `--brief`-only invocations). All imports happen at module load — no runtime cost.
 
 See also: [How to polish a draft](../how-to/polish-a-draft.md) and [Explanation: the critic loop](../explanation/the-critic-loop.md).

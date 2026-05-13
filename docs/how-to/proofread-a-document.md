@@ -72,7 +72,7 @@ open --raw draft.md | polish --level light > polished.md
 - It does not change word choice or sentence structure (unless `--strict`).
 - It does not adjust register or tone — use `tone` for that.
 - It does not translate.
-- It does not verify facts — use `factcheck` for that.
+- It does not verify facts — use [`factcheck`](../reference/validate.md#factcheck) for that.
 
 ## Related
 

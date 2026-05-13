@@ -63,7 +63,7 @@ Factchecking requires:
 2. Searching for sources (network call)
 3. Evaluating evidence (judgment)
 
-Each step on its own could be a separate command. We bundle them into `factcheck` because the workflow is "verify this draft," not "extract every potentially-checkable string and look each one up." The bundled command goes through an LLM with `web_search` enabled — this is why `analyze` has a separate `COMMA_ANALYZE_CFG` with tools turned on.
+Each step on its own could be a separate command. We bundle them into `factcheck` because the workflow is "verify this draft," not "extract every potentially-checkable string and look each one up." The bundled command goes through an LLM with `web_search` enabled — and because that tool budget would be wasteful for the lighter NLP commands, `factcheck` and its kin (`quotes`, `claims`) live in their own [`validate`](../reference/validate.md) module with a separate `COMMA_VALIDATE_CFG` rather than in `analyze`.
 
 ## How `polish` uses the split
 

@@ -117,7 +117,8 @@ The `--bullets` flag asks for a bullet list; `--max 3` caps the length.
 You used three commands from `transform.nu`, the part of comma that *rewrites* existing text. The other modules cover:
 
 - `generate.nu` — producing *new* text from a brief
-- `analyze.nu` — inspecting text (statistics, classification, fact-checks)
+- `analyze.nu` — inspecting text (statistics, classification, NLP)
+- `validate.nu` — verifying text against reality (fact-checks, quote attribution)
 - `research.nu` — capture and distillation, with bridges to IWE
 - `pipeline.nu` — `polish`, an iterative critic loop
 - `publish.nu` — render to PDF, HTML, DOCX

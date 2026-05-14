@@ -249,3 +249,82 @@ iwe attach -k coffee-deep-dive --to daily           # links it under daily/2026-
 This is useful if you keep a running daily log of everything you read. The block reference points at the source note; the source remains its own first-class document.
 
 Without configured actions, `iwe attach` has nothing to attach to and you do not need it — `iwe new` alone is the capture primitive.
+
+## `iwe squash` and `iwe inline`: assembly primitives
+
+Two further IWE CLI subcommands matter for the comma flow because they handle the "I have many notes; assemble them into one document" case. Both operate on inclusion links, but with different intent.
+
+### `iwe squash <key>` — non-destructive consolidation
+
+Follows every inclusion link from the starting document, recursively to a configurable depth, and emits one consolidated markdown document on stdout. Headings are renumbered so the resulting hierarchy is consistent. The source files are not modified.
+
+```
+iwe squash <KEY> [-d <depth>]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `KEY` | required | starting document |
+| `-d, --depth` | 2 | how many levels of inclusion links to follow |
+
+**The use case:** you have written a *skeleton* article in IWE where each section is an inclusion link to a research note. `iwe squash` materializes the skeleton into the final assembled text — pipe it into `polish`, `to-pdf`, or anywhere else.
+
+```nu
+# Capture and distill three sources
+fetch <url1> | distill | iwe new "Extraction basics"
+fetch <url2> | distill | iwe new "Grind size"
+fetch <url3> | distill | iwe new "Temperature"
+
+# Author a skeleton with inclusion links
+iwe new "Espresso article" --content "# Espresso essentials
+
+## Extraction
+[extraction-basics]
+
+## Grind
+[grind-size]
+
+## Temperature
+[temperature]
+"
+
+# Squash to a single consolidated draft
+iwe squash espresso-article | save -f draft.md
+
+# Continue the comma pipeline
+open --raw draft.md | polish --brief "Espresso essentials article" | to-pdf out.pdf
+```
+
+This is the alternative to `draft --notes` when you want to compose from your own notes deterministically rather than ask an LLM to synthesize across them. See [How to ground generation in research notes](../how-to/ground-generation-in-research.md) for both patterns side by side.
+
+### `iwe inline <key>` — surgical, destructive
+
+Replaces a single inclusion link with the actual content of the referenced document, in place in the source file. By default, the referenced document is then *deleted* and any other references to it are cleaned up across the graph.
+
+```
+iwe inline <KEY> [--reference <KEY> | --block <N>]
+                 [--keep-target] [--as-quote] [--dry-run]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `KEY` | required | document containing the reference to inline |
+| `--reference` | — | which referenced document to inline (key or title, case-insensitive partial match) |
+| `--block` | — | select reference by 1-indexed position |
+| `--list` | off | list every inclusion link in the document with its number |
+| `--keep-target` | off | preserve the referenced document instead of deleting it |
+| `--as-quote` | off | embed as a markdown blockquote instead of a section |
+| `--dry-run` | off | print result without writing |
+
+Use this when you genuinely want to merge two specific documents and remove the source — for example, promoting an inbox note into a section of a longer write-up and discarding the inbox draft. **The destructive default is dangerous; use `--dry-run` first and `--keep-target` if you are unsure.**
+
+For most assembly work, prefer `iwe squash`. `inline` is for one-at-a-time refactoring, not for building a draft.
+
+### When to use which
+
+| Goal | Command |
+|---|---|
+| LLM writes an article informed by your notes | `draft --notes <key>` |
+| Assemble your own notes in a skeleton order, non-destructively | `iwe squash <skeleton-key>` |
+| Merge two specific documents and delete the source | `iwe inline <key> --reference <other>` |
+| Preview what content would land where before assembly | `iwe squash --depth 1` or `iwe inline --dry-run` |

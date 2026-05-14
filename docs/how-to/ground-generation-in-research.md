@@ -13,7 +13,7 @@ Have `draft`, `expand`, `ask`, `ideas` or `title` use your IWE notes as factual 
 ## Prerequisites
 
 - An IWE workspace (`iwe init` in some directory)
-- One or more notes in it (`iwe new -k <key> < some-content.md`)
+- One or more notes in it (`iwe new "<Title>" < some-content.md`, or with `-c "<content>"`)
 - You are running comma from inside that workspace
 
 ## Basic recipe
@@ -76,11 +76,14 @@ All five:
 ### Multi-stage with research
 
 ```nu
-# Distill captured sources into one essentials note
-fetch <url1> | distill | iwe attach espresso-essentials
-fetch <url2> | distill | iwe attach espresso-essentials
+# Distill captured sources into separate notes
+fetch <url1> | distill | iwe new "Espresso source 1"
+fetch <url2> | distill | iwe new "Espresso source 2"
 
-# Generate from the essentials
+# (Optionally edit a parent espresso-essentials.md to add inclusion links
+# to the two notes above so they're retrieved together.)
+
+# Generate from the essentials parent
 "FAQ for first-time espresso users" \
   | ask --notes espresso-essentials --kind faq --count 10
 ```

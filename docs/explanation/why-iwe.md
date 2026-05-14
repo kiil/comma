@@ -65,9 +65,9 @@ The split is clean. Comma's four research commands (`fetch`, `distill`, `cite`, 
 
 Capture (clip, daily notes, inbox patterns) lives in `.iwe/config.toml` as templates. Comma deliberately does not provide `note`, `clip` or template handling. The reasoning:
 
-- IWE's `attach` action with `key_template` and `document_template` already covers the common capture patterns.
+- IWE's `attach` action — configured in `.iwe/config.toml` with `key_template` and `document_template` — already covers the daily-note and inbox patterns.
 - A user's preferred capture conventions are personal. Codifying them in comma would force a style on everyone.
-- The `iwe attach` command can be invoked from a pipe: `pbpaste | iwe attach <key>` does what a comma `clip` would have done, without comma needing to know.
+- The two-step `iwe new "<Title>"` (create document from piped content) followed by `iwe attach -k <slug> --to <action>` (link it under a configured target) gives the user the full pattern without comma needing to know any of it.
 
 So comma's contribution to capture is just `fetch`. Everything else flows through `iwe`.
 

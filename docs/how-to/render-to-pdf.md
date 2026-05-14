@@ -93,7 +93,7 @@ open --raw article.md | pub out.docx     # → to-docx
 ## Compose with the full pipeline
 
 ```nu
-fetch <url> | distill | iwe attach espresso-essentials
+fetch <url> | distill | iwe new "Espresso essentials"
 
 "blog post about espresso" \
   | draft --notes espresso-essentials \

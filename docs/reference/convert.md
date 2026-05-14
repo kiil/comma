@@ -257,7 +257,7 @@ The `from-*` commands compose with the rest of comma in obvious ways:
 from-docx draft.docx | polish --brief "team update" | to-pdf final.pdf --title "Team update"
 
 # Distill a PDF paper into a structured IWE note
-from-pdf paper.pdf | distill | iwe attach research-paper
+from-pdf paper.pdf | distill | iwe new "Research paper"
 
 # Analyze an EPUB book
 from-epub book.epub | report --no-llm | to yaml | save -f analysis.yaml

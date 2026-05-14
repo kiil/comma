@@ -1,8 +1,10 @@
 # comma · research — fetching, distillation, and the bridge to generate.
 #
 # The persistence layer is IWE (https://iwe.md). comma does not touch
-# notebooks directly — the user pipes output to `iwe attach <key>` or
-# `iwe new <key>` with their own template configuration.
+# notebooks directly — the user pipes output to `iwe new "<Title>"`
+# (which slugifies the title into the filename) and optionally chains
+# `iwe attach -k <slug> --to <action>` to link the new note into a
+# configured target (daily log, inbox, …) defined in .iwe/config.toml.
 #
 # Dependencies (must be on $PATH):
 #   reader  — https://github.com/mrusme/reader (Mozilla Readability in Go)
@@ -92,8 +94,8 @@ def comma-call [system: string, user: string] {
 #   fetch "https://example.com" --no-extract   # skip readability (raw markdown)
 #
 # Typical research flow:
-#   fetch <url> | iwe attach research-coffee
-#   fetch <url> --js | distill | iwe attach espresso-essentials
+#   fetch <url> | iwe new "Coffee article"
+#   fetch <url> --js | distill | iwe new "Espresso essentials"
 export def fetch [
     url: string                # URL to fetch
     --js                       # use headless browser for JS-rendered pages
@@ -265,9 +267,9 @@ export def feeds [
 
 # Process raw captured material (article, transcript, notes) into a
 # structured study note with claims, quotes, open questions and keywords.
-# Output is markdown ready for `iwe attach <key>`.
+# Output is markdown ready for `iwe new "<Title>"`.
 #
-#   fetch <url> | distill | iwe attach espresso-essentials
+#   fetch <url> | distill | iwe new "Espresso essentials"
 #   open --raw article.md | distill
 export def distill [
     ...text: string

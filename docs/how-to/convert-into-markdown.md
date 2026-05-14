@@ -46,7 +46,7 @@ from-pdf paper.pdf
 PDF output is *plain text*, not true markdown — pandoc cannot read PDF directly, so we fall back to `pdftotext`. Headings, tables and multi-column layouts may not survive. Still useful for downstream analysis:
 
 ```nu
-from-pdf paper.pdf | distill | iwe attach research-paper
+from-pdf paper.pdf | distill | iwe new "Research paper"
 from-pdf paper.pdf | report --no-llm | to yaml
 ```
 

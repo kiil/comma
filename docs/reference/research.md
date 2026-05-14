@@ -39,7 +39,7 @@ fetch <url> [--js] [--no-extract] [--frontmatter] [--image-mode <string>] [--wai
 fetch "https://example.com/article"
 fetch "https://spa.example.com/page" --js
 fetch "https://example.com" --no-extract                  # raw markdown without Readability
-fetch "https://example.com" --frontmatter | iwe new -k article-source
+fetch "https://example.com" --frontmatter | iwe new "Article source"
 ```
 
 **Alias:** `,fe`
@@ -151,7 +151,7 @@ Matches source language for claims, quotes, questions; keywords use source langu
 **Example:**
 
 ```nu
-fetch <url> | distill | iwe attach espresso-essentials
+fetch <url> | distill | iwe new "Espresso essentials"
 open --raw transcript.md | distill
 ```
 
@@ -221,7 +221,31 @@ context espresso-essentials --shape quotes-only   # just the quotes
 
 ## Behaviour shared by all commands
 
-- `fetch` returns markdown text. The others (`distill`, `cite`, `context`) also return text on stdout — composable with `save`, `iwe attach`, or any nushell pipe.
-- Persistence is your call. None of these commands write to IWE on their own — you pipe to `iwe attach <key>` or `iwe new -k <key>`.
+- `fetch` returns markdown text. The others (`distill`, `cite`, `context`) also return text on stdout — composable with `save`, `iwe new`, or any nushell pipe.
+- Persistence is your call. None of these commands write to IWE on their own — you pipe to `iwe new "<Title>"` to create a document (slug is derived from the title). To link an existing document into a configured target (a daily log, an inbox, …), follow up with `iwe attach -k <slug> --to <action>` — `<action>` is a name from your `.iwe/config.toml`.
 - `distill` and `cite` use `$env.COMMA_CFG` (LLM-backed, no tools). See [configuration](configuration.md).
 - `context` is purely an IWE wrapper plus the optional `sum` shape — no direct LLM call.
+
+## `iwe attach`: the linking primitive
+
+The IWE CLI's `attach` subcommand is not what its name might suggest in everyday usage — it does *not* take stdin content and create a note. It is a *linking* command: given an existing source document and a configured *attach action* in `.iwe/config.toml`, it adds the source as a block reference under the target document the action resolves to.
+
+A typical `.iwe/config.toml` action looks like:
+
+```toml
+[actions.daily]
+type = "attach"
+key_template = "daily/{{today}}"
+title = "{{today}}"
+```
+
+With that in place, the two-step capture pattern is:
+
+```nu
+fetch <url> | iwe new "Coffee deep dive"            # creates coffee-deep-dive.md
+iwe attach -k coffee-deep-dive --to daily           # links it under daily/2026-05-14
+```
+
+This is useful if you keep a running daily log of everything you read. The block reference points at the source note; the source remains its own first-class document.
+
+Without configured actions, `iwe attach` has nothing to attach to and you do not need it — `iwe new` alone is the capture primitive.

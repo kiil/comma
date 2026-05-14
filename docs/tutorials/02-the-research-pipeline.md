@@ -55,10 +55,10 @@ Capture it as an IWE note:
 
 ```nu
 fetch "https://en.wikipedia.org/wiki/Coffee_extraction" | save -f raw-extraction.md
-iwe new -k raw-extraction < raw-extraction.md
+iwe new "Raw extraction" < raw-extraction.md
 ```
 
-We saved to a file first so you can see what was fetched. In a real workflow you could pipe directly: `fetch <url> | iwe new -k raw-extraction`.
+We saved to a file first so you can see what was fetched. In a real workflow you could pipe directly: `fetch <url> | iwe new "Raw extraction"`. The note slug becomes `raw-extraction` (lowercased and slugified from the title).
 
 ## Step 2 — Distill the raw material
 
@@ -71,7 +71,7 @@ Raw web pages are wordy. The `distill` command runs the markdown through an LLM 
 
 ```nu
 open --raw raw-extraction.md | distill | save -f extraction-essentials.md
-iwe new -k extraction-essentials < extraction-essentials.md
+iwe new "Extraction essentials" < extraction-essentials.md
 ```
 
 Look at the distilled note:

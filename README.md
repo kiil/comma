@@ -173,7 +173,7 @@ Uses `gemini-3-pro-preview` with `web_search,nu` tools by default (override via 
 | `cite <topic>` | `,ci` | LLM-extract verbatim quotes about a topic |
 | `context <key>` | `,cx` | `iwe retrieve` + prompt-shaping for generate |
 
-All commands return markdown on stdout. Persistence is your call — pipe to `iwe attach <key>` or `iwe new <key>` with your own template config.
+All commands return markdown on stdout. Persistence is your call — pipe to `iwe new "<Title>"` (which slugifies the title into the filename). Use `iwe attach -k <slug> --to <action>` afterwards if you want to link the new note into a configured target like a daily log or inbox.
 
 ### pipeline.nu — iterative critic loop
 
@@ -221,13 +221,19 @@ Reserved module. Will hold commands that publish finished output to platforms vi
 ## Full pipeline example
 
 ```nu
-# 1. Capture two sources
-fetch "https://example.com/espresso-extraction-deep-dive" | iwe attach research-espresso
-fetch "https://example.com/grind-size-science"          | iwe attach research-espresso
+# 1. Capture and distill two sources into separate study notes
+fetch "https://example.com/espresso-extraction" | distill | iwe new "Espresso extraction"
+fetch "https://example.com/grind-size-science"  | distill | iwe new "Grind size science"
 
-# 2. Distill each source into a study note linked under espresso-essentials
-iwe retrieve -k research-espresso/extraction-deep-dive | distill | iwe attach espresso-essentials
-iwe retrieve -k research-espresso/grind-size-science    | distill | iwe attach espresso-essentials
+# 2. (Optional) organize in IWE — open espresso-essentials.md and add
+#    inclusion links to the two notes you just created, so a single
+#    --notes key pulls both as children:
+#
+#    # Espresso essentials
+#    [espresso-extraction]
+#    [grind-size-science]
+#
+#    Or use a configured attach action in .iwe/config.toml to automate this.
 
 # 3. Draft a blog post grounded in the research
 "Blog post about espresso extraction and grind size, for home brewers" \
@@ -239,7 +245,7 @@ open --raw draft.md \
     | polish --level editorial --brief "Blog post about espresso extraction and grind size, for home brewers" --verbose \
     > polished.md
 
-# 5. Publish as PDF
+# 5. Render as PDF
 open --raw polished.md | to-pdf espresso.pdf --title "Espresso essentials" --author "LK"
 ```
 

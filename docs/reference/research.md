@@ -219,6 +219,57 @@ context espresso-essentials --shape quotes-only   # just the quotes
 
 **Alias:** `,cx`
 
+## `bibliography`
+
+Build a markdown Sources block from the frontmatter of an IWE-note hierarchy. The provenance counterpart to `context`: where `context` feeds research INTO a draft, `bibliography` reports back OUT — which sources were available, and what their URLs and authors are.
+
+```
+bibliography <key> [--depth <int>] [--include-self] [--heading <string>]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `key` | required | root IWE note key |
+| `-d, --depth` | 2 | how many levels of inclusion links to follow |
+| `--include-self` | off | also include the root note in the output |
+| `--heading` | `"## Sources"` | heading line for the emitted block |
+
+Reads the YAML frontmatter of every note in the hierarchy and emits a markdown bullet list:
+
+```
+## Sources
+
+- [Title](source-url) — author, published date, captured date
+- [Title](source-url) — author
+- title-only-no-frontmatter
+```
+
+Notes without frontmatter are still listed (by key); they just lack URLs and bibliographic detail. Works best with notes captured via [`fetch --frontmatter`](#fetch), which writes the `source`, `captured`, `language`, `published`, `author` fields that `bibliography` reads.
+
+**Dependencies:** `iwe`. Must be run from inside an IWE workspace.
+
+**Example — append a Sources block to a finished draft:**
+
+```nu
+let draft = open --raw final.md
+let sources = bibliography espresso-essentials --depth 3
+$"($draft)\n\n($sources)" | save -f final-with-sources.md
+```
+
+**Example — standalone bibliography:**
+
+```nu
+bibliography espresso-essentials | save -f bibliography.md
+```
+
+**Alias:** `,bi`
+
+### Caveats
+
+- This is **bibliographic** provenance, not **claim-level** provenance: it tells you which sources contributed to a hierarchy, not which sentence in the final draft came from which source. For claim-level attribution, see the [skeleton-assembly pattern](../how-to/ground-generation-in-research.md#pattern-b---skeleton-assembly-with-iwe-squash) where each section transparently comes from one note.
+- The inclusion-link syntax IWE recognizes is `[Title](key)` on its own line, not `[key]` alone. Notes linked with the wrong syntax won't show up in `iwe retrieve` and therefore won't show up here either.
+- If a note in the hierarchy has no frontmatter at all, it appears in the output as just its key. That's deliberate — silently dropping it would hide the fact that a source exists but is under-documented.
+
 ## Behaviour shared by all commands
 
 - `fetch` returns markdown text. The others (`distill`, `cite`, `context`) also return text on stdout — composable with `save`, `iwe new`, or any nushell pipe.

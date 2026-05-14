@@ -361,3 +361,98 @@ export def context [
         $shaped
     }
 }
+
+# Helper: locate an IWE note's .md file by key.
+# Tries direct match in cwd first, then a recursive glob — IWE keeps notes
+# as <slug>.md, optionally nested in subdirectories (e.g. daily/2026-05-14.md).
+def find-note-path [key: string] {
+    let direct = $"($key).md"
+    if ($direct | path exists) { return $direct }
+    let matches = glob $"**/($key).md"
+    if ($matches | is-not-empty) { return ($matches | first) }
+    null
+}
+
+# Helper: parse a YAML frontmatter block from the start of a markdown string.
+# Returns an empty record if none is present.
+def parse-frontmatter [content: string] {
+    let trimmed = $content | str trim --left
+    if not ($trimmed | str starts-with "---") { return {} }
+    let body_lines = $trimmed | lines | skip 1
+    let end_idx = $body_lines
+        | enumerate
+        | where {|r| ($r.item | str trim) == "---"}
+        | first
+        | get --optional index
+    if $end_idx == null { return {} }
+    let yaml_block = $body_lines | take $end_idx | str join "\n"
+    try { $yaml_block | from yaml } catch { {} }
+}
+
+# Build a bibliography of the sources cited in (or included by) an IWE
+# document hierarchy. Follows inclusion links from the given key, reads
+# each note's YAML frontmatter, and emits a markdown Sources section.
+#
+# Works best with notes captured via `fetch --frontmatter`, which already
+# writes the `source`, `captured`, `language`, `published`, `author` fields
+# that bibliography reads. Notes without frontmatter are still listed by
+# title; they just lack URLs and bibliographic detail.
+#
+#   bibliography espresso-essentials
+#   bibliography espresso-essentials --depth 3 --include-self
+#
+# Pipe-friendly — append to a draft directly:
+#
+#   open --raw draft.md \
+#     | append (bibliography espresso-essentials)
+#     | str join "\n\n"
+#     | save -f draft-with-sources.md
+export def bibliography [
+    key: string                # root IWE note key
+    --depth (-d): int = 2      # inclusion-link depth to follow
+    --include-self             # also include the root note itself
+    --heading: string = "## Sources"  # heading line for the emitted block
+] {
+    require iwe
+    let keys = ^iwe retrieve -k $key -d $depth -f keys
+        | lines
+        | each {|l| $l | str trim}
+        | where ($it | is-not-empty)
+    let candidates = if $include_self { $keys } else { $keys | where {|k| $k != $key} }
+    let entries = $candidates | each {|k|
+        let path = find-note-path $k
+        if $path == null {
+            {key: $k, title: $k, source: null, author: null, published: null, captured: null, found: false}
+        } else {
+            let raw = open --raw $path
+            let fm = parse-frontmatter $raw
+            {
+                key: $k
+                title: ($fm | get --optional title | default $k)
+                source: ($fm | get --optional source)
+                author: ($fm | get --optional author)
+                published: ($fm | get --optional published)
+                captured: ($fm | get --optional captured)
+                found: true
+            }
+        }
+    }
+    if ($entries | is-empty) {
+        return $"($heading)\n\n\(no notes found in hierarchy under `($key)`\)\n"
+    }
+    let lines = $entries | each {|e|
+        let title_part = if $e.source != null and $e.source != "" {
+            $"[($e.title)]\(($e.source)\)"
+        } else {
+            $e.title
+        }
+        let meta_bits = (
+            [($e.author | default null) ($e.published | default null) ($e.captured | default null)]
+                | where {|x| $x != null and $x != ""}
+                | each {|x| $x | into string}
+        )
+        let meta = if ($meta_bits | is-empty) { "" } else { $" — ($meta_bits | str join ', ')" }
+        $"- ($title_part)($meta)"
+    }
+    $"($heading)\n\n($lines | str join "\n")\n"
+}

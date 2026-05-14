@@ -172,6 +172,7 @@ Uses `gemini-3-pro-preview` with `web_search,nu` tools by default (override via 
 | `distill` | `,di` | Raw text → structured study note (claims, quotes, open questions, keywords) |
 | `cite <topic>` | `,ci` | LLM-extract verbatim quotes about a topic |
 | `context <key>` | `,cx` | `iwe retrieve` + prompt-shaping for generate |
+| `bibliography <key>` | `,bi` | Markdown Sources block from IWE-note frontmatter (provenance for a draft) |
 
 All commands return markdown on stdout. Persistence is your call — pipe to `iwe new "<Title>"` (which slugifies the title into the filename). Use `iwe attach -k <slug> --to <action>` afterwards if you want to link the new note into a configured target like a daily log or inbox.
 

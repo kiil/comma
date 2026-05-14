@@ -156,6 +156,116 @@ Errors on any other extension.
 
 The command is named `pub` for backwards compatibility — the name originates from when this module was called `publish`. The `pub` alias and command are stable.
 
+## from-* commands
+
+The inverse direction: convert other document formats into markdown. All return markdown on stdout — pipe to `save`, to another comma command, or to `iwe new`.
+
+Text formats accept either a file path or piped text. Binary formats require a file path because they can't be passed through a pipe meaningfully.
+
+All commands accept `--wrap (-w) <string>` to control pandoc's line-wrapping (default: `none`, meaning no soft wrapping in the output markdown).
+
+### `from-html`
+
+HTML → markdown.
+
+```
+from-html [file] [--wrap <string>]
+```
+
+Accepts a `.html` file path or piped HTML.
+
+### `from-latex`
+
+LaTeX → markdown.
+
+```
+from-latex [file] [--wrap <string>]
+```
+
+Accepts a `.tex` file path or piped LaTeX.
+
+### `from-rst`
+
+reStructuredText → markdown.
+
+```
+from-rst [file] [--wrap <string>]
+```
+
+Accepts a `.rst` file path or piped reST.
+
+### `from-org`
+
+Org-mode → markdown.
+
+```
+from-org [file] [--wrap <string>]
+```
+
+Accepts a `.org` file path or piped org-mode.
+
+### `from-docx`
+
+Word DOCX → markdown.
+
+```
+from-docx <file> [--wrap <string>] [--extract-media <path>]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `file` | required | input `.docx` file |
+| `--extract-media` | — | directory to write embedded images into |
+
+### `from-epub`
+
+EPUB → markdown.
+
+```
+from-epub <file> [--wrap <string>] [--extract-media <path>]
+```
+
+### `from-odt`
+
+LibreOffice/OpenOffice ODT → markdown.
+
+```
+from-odt <file> [--wrap <string>] [--extract-media <path>]
+```
+
+### `from-pdf`
+
+PDF → plain text via `pdftotext` (from poppler). Pandoc cannot read PDF directly, so the output is plain text rather than true markdown — headings, tables and multi-column layouts may not survive. Still useful as input to downstream comma commands like `analyze`, `polish` or `distill`.
+
+```
+from-pdf <file> [--layout]
+```
+
+| Flag | Default | What |
+|---|---|---|
+| `file` | required | input `.pdf` file |
+| `--layout` | off | preserve original column layout (pass `-layout` to pdftotext) |
+
+**Dependency:** `pdftotext` (from poppler — `brew install poppler` on macOS).
+
+## Composition examples
+
+The `from-*` commands compose with the rest of comma in obvious ways:
+
+```nu
+# Read a Word doc, polish it, render to PDF
+from-docx draft.docx | polish --brief "team update" | to-pdf final.pdf --title "Team update"
+
+# Distill a PDF paper into a structured IWE note
+from-pdf paper.pdf | distill | iwe attach research-paper
+
+# Analyze an EPUB book
+from-epub book.epub | report --no-llm | to yaml | save -f analysis.yaml
+
+# Convert legacy reStructuredText to markdown and proofread
+from-rst manual.rst | proof | save -f manual.md
+```
+
 **Alias:** `,pb`
 
 ## Behaviour shared by all commands

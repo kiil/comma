@@ -65,6 +65,7 @@ export def status [] {
     print $"(ansi attr_dimmed)validate:  factcheck · quotes · claims(ansi reset)"
     print $"(ansi attr_dimmed)pipeline:  polish(ansi reset)"
     print $"(ansi attr_dimmed)convert:   to-pdf · to-html · to-docx · to-epub · to-typst · typst-compile · preview · pub(ansi reset)"
+    print $"(ansi attr_dimmed)           from-html · from-docx · from-epub · from-odt · from-latex · from-rst · from-org · from-pdf(ansi reset)"
     print $"(ansi attr_dimmed)publish:   \(reserved — platform-publishing APIs\)(ansi reset)"
     print $"(ansi attr_dimmed)research:  fetch · meta · links · feeds · distill · cite · context(ansi reset)"
     print $"(ansi attr_dimmed)           \(validate: gemini-3-pro-preview + web_search,nu — override via COMMA_VALIDATE_CFG\)(ansi reset)"

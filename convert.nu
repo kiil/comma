@@ -247,3 +247,134 @@ export def pub [
         _ => (error make {msg: $"convert: unknown extension '($ext)' — use pdf, html, docx, epub or typ"})
     }
 }
+
+# --- from-* commands: convert other formats INTO markdown ---
+
+# Helper for text-format from-* commands: read from pipe or from a file path.
+def from-text [piped: any, file: any] {
+    if $file != null { return (open --raw $file) }
+    if $piped == null {
+        error make {msg: "from-*: pipe text in or pass a file path"}
+    }
+    if ($piped | describe) == "string" { return $piped }
+    if ($piped | describe) == "list<string>" { return ($piped | str join "\n") }
+    error make {msg: $"from-*: pipe input must be text, not (($piped | describe))"}
+}
+
+# HTML → markdown. Accepts a file path or piped HTML.
+#
+#   open --raw page.html | from-html
+#   from-html page.html
+export def from-html [
+    file?: path                # input .html file (optional if piping HTML in)
+    --wrap (-w): string = "none"  # pandoc --wrap setting
+] {
+    require pandoc
+    let piped = $in
+    let src = from-text $piped $file
+    $src | ^pandoc --from html --to markdown --wrap $wrap
+}
+
+# LaTeX → markdown.
+#
+#   open --raw paper.tex | from-latex
+#   from-latex paper.tex
+export def from-latex [
+    file?: path
+    --wrap (-w): string = "none"
+] {
+    require pandoc
+    let piped = $in
+    let src = from-text $piped $file
+    $src | ^pandoc --from latex --to markdown --wrap $wrap
+}
+
+# reStructuredText → markdown.
+#
+#   from-rst manual.rst
+export def from-rst [
+    file?: path
+    --wrap (-w): string = "none"
+] {
+    require pandoc
+    let piped = $in
+    let src = from-text $piped $file
+    $src | ^pandoc --from rst --to markdown --wrap $wrap
+}
+
+# Org-mode → markdown.
+#
+#   from-org notes.org
+export def from-org [
+    file?: path
+    --wrap (-w): string = "none"
+] {
+    require pandoc
+    let piped = $in
+    let src = from-text $piped $file
+    $src | ^pandoc --from org --to markdown --wrap $wrap
+}
+
+# DOCX → markdown. Word documents are binary; input must come from a file path.
+#
+#   from-docx report.docx
+#   from-docx report.docx --extract-media ./figures
+export def from-docx [
+    file: path                 # input .docx file
+    --wrap (-w): string = "none"
+    --extract-media: path      # directory to write embedded images into
+] {
+    require pandoc
+    mut args = [--from docx --to markdown --wrap $wrap]
+    if $extract_media != null { $args = ($args | append ["--extract-media" $extract_media]) }
+    $args = ($args | append $file)
+    ^pandoc ...$args
+}
+
+# EPUB → markdown.
+#
+#   from-epub book.epub
+#   from-epub book.epub --extract-media ./illustrations
+export def from-epub [
+    file: path
+    --wrap (-w): string = "none"
+    --extract-media: path
+] {
+    require pandoc
+    mut args = [--from epub --to markdown --wrap $wrap]
+    if $extract_media != null { $args = ($args | append ["--extract-media" $extract_media]) }
+    $args = ($args | append $file)
+    ^pandoc ...$args
+}
+
+# ODT (LibreOffice/OpenOffice) → markdown.
+#
+#   from-odt document.odt
+export def from-odt [
+    file: path
+    --wrap (-w): string = "none"
+    --extract-media: path
+] {
+    require pandoc
+    mut args = [--from odt --to markdown --wrap $wrap]
+    if $extract_media != null { $args = ($args | append ["--extract-media" $extract_media]) }
+    $args = ($args | append $file)
+    ^pandoc ...$args
+}
+
+# PDF → plain text via pdftotext (poppler). Pandoc cannot read PDF directly,
+# so the output is plain text, not true markdown — headings, tables and
+# columns may not survive. Still useful for downstream analyze/polish/etc.
+#
+# Dependency: `pdftotext` (from poppler — `brew install poppler`).
+#
+#   from-pdf paper.pdf
+#   from-pdf paper.pdf --layout       # preserve original column layout
+export def from-pdf [
+    file: path
+    --layout                   # preserve original layout (pdftotext -layout)
+] {
+    require pdftotext
+    let layout_arg = if $layout { ["-layout"] } else { [] }
+    ^pdftotext ...$layout_arg $file -
+}

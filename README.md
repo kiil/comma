@@ -36,8 +36,9 @@ Optional, per module:
 
 | Module | Tool | Purpose |
 |---|---|---|
-| publish | `pandoc` | Universal document converter (PDF, HTML, DOCX, EPUB) |
-| publish | `typst` | Default PDF engine (faster, nicer typography than LaTeX) |
+| convert | `pandoc` | Universal document converter (used by every `to-*` and most `from-*`) |
+| convert | `typst` | Default PDF engine (faster, nicer typography than LaTeX) |
+| convert | `pdftotext` | Required by `from-pdf`. Part of poppler — `brew install poppler` |
 | research | `reader` | Mozilla Readability port in Go for clean article extraction. `go install github.com/mrusme/reader@latest` |
 | research | `nu_plugin_query` | CSS-selector and `webpage-info` extraction. Used by `meta`, `links`, `feeds`, and `fetch --frontmatter`. `cargo install nu_plugin_query && plugin add ~/.cargo/bin/nu_plugin_query` |
 | research | `nu_plugin_browse` | Headless Chromium for JS-rendered pages. Only needed for `--js` flag on `fetch`/`meta`/`links`/`feeds`. `cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse` |
@@ -188,20 +189,30 @@ All commands return markdown on stdout. Persistence is your call — pipe to `iw
 
 Output is the polished text on stdout. The revision log and any warnings go to stderr so pipes stay clean.
 
-### convert.nu — render to file formats
+### convert.nu — convert between file formats
 
 | Command | Alias | What |
 |---|---|---|
-| `to-pdf <out>` | `,pd` | PDF via pandoc + typst (default engine) |
-| `to-html <out>` | `,hl` | Standalone HTML5 |
-| `to-docx <out>` | `,dx` | Word DOCX |
-| `to-epub <out>` | `,ep` | EPUB3 |
-| `to-typst <out>` | `,tp` | Typst source — tweak before compile |
+| `to-pdf <out>` | `,pd` | Markdown → PDF via pandoc + typst (default engine) |
+| `to-html <out>` | `,hl` | Markdown → standalone HTML5 |
+| `to-docx <out>` | `,dx` | Markdown → Word DOCX |
+| `to-epub <out>` | `,ep` | Markdown → EPUB3 |
+| `to-typst <out>` | `,tp` | Markdown → Typst source — tweak before compile |
 | `typst-compile <in> <out>` | — | Direct `.typ` → `.pdf` without pandoc |
 | `preview` | `,pv` | Render to temp PDF and open in default viewer |
-| `pub <out>` | `,pb` | Generic dispatch by output file extension |
+| `pub <out>` | `,pb` | Generic to-* dispatch by output file extension |
+| `from-html [file]` | — | HTML → markdown |
+| `from-docx <file>` | — | Word DOCX → markdown |
+| `from-epub <file>` | — | EPUB → markdown |
+| `from-odt <file>` | — | LibreOffice ODT → markdown |
+| `from-latex [file]` | — | LaTeX → markdown |
+| `from-rst [file]` | — | reStructuredText → markdown |
+| `from-org [file]` | — | Org-mode → markdown |
+| `from-pdf <file>` | — | PDF → plain text (via `pdftotext`) |
 
-All commands accept `--title`, `--author`, `--date` for pandoc metadata. PDF takes `--engine typst\|xelatex\|pdflatex\|weasyprint` and `--template <path>`.
+The `to-*` commands accept `--title`, `--author`, `--date` for pandoc metadata. PDF takes `--engine typst\|xelatex\|pdflatex\|weasyprint` and `--template <path>`.
+
+The `from-*` commands return markdown on stdout. Text formats (html, latex, rst, org) take an optional file path or read from a pipe; binary formats (docx, epub, odt, pdf) require a file path.
 
 ### publish.nu — post to external platforms (reserved)
 

@@ -13,4 +13,5 @@ Task-oriented recipes. Assumes you have done the [tutorials](../tutorials/).
 - [Analyze text statistically](analyze-text-statistically)
 - [Iteratively polish a draft](polish-a-draft)
 - [Render to PDF via typst](render-to-pdf)
+- [Convert documents into markdown](convert-into-markdown)
 - [Switch LLM models](switch-llm-models)

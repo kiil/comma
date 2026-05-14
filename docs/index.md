@@ -32,6 +32,7 @@ If you are new, start with [Getting started](tutorials/01-getting-started.md). I
 - [Analyze text statistically](how-to/analyze-text-statistically.md)
 - [Iteratively polish a draft](how-to/polish-a-draft.md)
 - [Render to PDF via typst](how-to/render-to-pdf.md)
+- [Convert documents into markdown](how-to/convert-into-markdown.md)
 - [Switch LLM models](how-to/switch-llm-models.md)
 
 ### Reference
@@ -42,7 +43,7 @@ If you are new, start with [Getting started](tutorials/01-getting-started.md). I
 - [validate](reference/validate.md) — verify text against reality
 - [research](reference/research.md) — capture, distill, IWE bridge
 - [pipeline](reference/pipeline.md) — polish (critic loop)
-- [convert](reference/convert.md) — render markdown to PDF, HTML, DOCX, EPUB files
+- [convert](reference/convert.md) — convert markdown to/from PDF, HTML, DOCX, EPUB and other formats
 - [publish](reference/publish.md) — reserved for platform-publishing APIs
 - [configuration](reference/configuration.md) — env vars and model overrides
 

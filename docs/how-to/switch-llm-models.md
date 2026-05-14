@@ -1,7 +1,7 @@
 ---
 title: "Switch LLM models"
 parent: "How-to guides"
-nav_order: 6
+nav_order: 7
 ---
 
 # How to switch LLM models

@@ -42,7 +42,8 @@ If you are new, start with [Getting started](tutorials/01-getting-started.md). I
 - [validate](reference/validate.md) — verify text against reality
 - [research](reference/research.md) — capture, distill, IWE bridge
 - [pipeline](reference/pipeline.md) — polish (critic loop)
-- [publish](reference/publish.md) — render to PDF, HTML, DOCX, EPUB
+- [convert](reference/convert.md) — render markdown to PDF, HTML, DOCX, EPUB files
+- [publish](reference/publish.md) — reserved for platform-publishing APIs
 - [configuration](reference/configuration.md) — env vars and model overrides
 
 ### Explanation

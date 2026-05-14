@@ -110,5 +110,5 @@ fetch <url> | distill | iwe attach espresso-essentials
 
 ## Related
 
-- [reference/publish](../reference/publish.md) — full flag reference for every output command
-- [How to switch LLM models](switch-llm-models.md) — note that publish has nothing to do with LLMs; it is pure document conversion
+- [reference/convert](../reference/convert.md) — full flag reference for every output command
+- [How to switch LLM models](switch-llm-models.md) — note that convert has nothing to do with LLMs; it is pure document conversion

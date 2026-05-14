@@ -51,7 +51,7 @@ Commands that need a missing tool fail with a clear error pointing at the instal
 The five modules form a left-to-right pipeline. You rarely use all of them in one chain, but the flow is the mental model:
 
 ```
-research → generate → analyze/validate → transform → publish
+research → generate → analyze/validate → transform → convert → publish
 ```
 
 - **research** captures, distills and supplies factual context
@@ -59,7 +59,8 @@ research → generate → analyze/validate → transform → publish
 - **analyze** inspects existing text — statistics, frequencies, classification
 - **validate** verifies text against reality — fact-checking, quote verification
 - **transform** rewrites existing text — translation, proofreading, tone shifts
-- **publish** renders finished text to PDF, HTML, DOCX, EPUB
+- **convert** renders finished text to PDF, HTML, DOCX, EPUB files on disk
+- **publish** (reserved) will post to external platforms via API
 
 There is also `polish` (in `pipeline.nu`) which orchestrates analyze + transform iteratively to refine a draft until it converges on quality thresholds.
 
@@ -187,7 +188,7 @@ All commands return markdown on stdout. Persistence is your call — pipe to `iw
 
 Output is the polished text on stdout. The revision log and any warnings go to stderr so pipes stay clean.
 
-### publish.nu — render to publishable formats
+### convert.nu — render to file formats
 
 | Command | Alias | What |
 |---|---|---|
@@ -201,6 +202,10 @@ Output is the polished text on stdout. The revision log and any warnings go to s
 | `pub <out>` | `,pb` | Generic dispatch by output file extension |
 
 All commands accept `--title`, `--author`, `--date` for pandoc metadata. PDF takes `--engine typst\|xelatex\|pdflatex\|weasyprint` and `--template <path>`.
+
+### publish.nu — post to external platforms (reserved)
+
+Reserved module. Will hold commands that publish finished output to platforms via API (LinkedIn, Drupal, Medium, Mastodon, etc.). No commands exported yet.
 
 ## Full pipeline example
 
@@ -288,7 +293,8 @@ comma/
 ├── validate.nu     # factcheck, quotes, claims (web_search-enabled)
 ├── research.nu     # fetch, meta, links, feeds, distill, cite, context
 ├── pipeline.nu     # polish (orchestrates analyze + transform + generate)
-└── publish.nu      # to-pdf, to-html, to-docx, to-epub, to-typst, preview, pub
+├── convert.nu      # to-pdf, to-html, to-docx, to-epub, to-typst, preview, pub
+└── publish.nu      # reserved — platform-publishing APIs
 ```
 
 Each submodule keeps its private helpers (`comma-call`, `comma-input`) local to avoid circular imports across the directory module. The duplication is intentional and small (~25 lines per file).

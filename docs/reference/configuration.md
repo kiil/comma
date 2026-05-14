@@ -1,7 +1,7 @@
 ---
 title: "configuration"
 parent: "Reference"
-nav_order: 8
+nav_order: 9
 ---
 
 # Reference: configuration
@@ -93,9 +93,13 @@ The new config persists for the rest of the session. `,?` (or `status`) shows th
 
 ## Module-specific configuration
 
-### `publish.nu`
+### `convert.nu`
 
 No environment variables. PDF engine is controlled per-call via `--engine`. Templates are passed per-call via `--template`.
+
+### `publish.nu`
+
+Reserved module. No commands exported yet; per-platform configuration will be defined as commands are added.
 
 ### `research.nu`
 

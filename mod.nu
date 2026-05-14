@@ -35,6 +35,7 @@ export use generate.nu *
 export use analyze.nu *
 export use validate.nu *
 export use pipeline.nu *
+export use convert.nu *
 export use publish.nu *
 export use research.nu *
 
@@ -63,7 +64,8 @@ export def status [] {
     print $"(ansi attr_dimmed)analyze\(LLM\): detect · sentiment · keywords · entities · readability · classify(ansi reset)"
     print $"(ansi attr_dimmed)validate:  factcheck · quotes · claims(ansi reset)"
     print $"(ansi attr_dimmed)pipeline:  polish(ansi reset)"
-    print $"(ansi attr_dimmed)publish:   to-pdf · to-html · to-docx · to-epub · to-typst · typst-compile · preview · pub(ansi reset)"
+    print $"(ansi attr_dimmed)convert:   to-pdf · to-html · to-docx · to-epub · to-typst · typst-compile · preview · pub(ansi reset)"
+    print $"(ansi attr_dimmed)publish:   \(reserved — platform-publishing APIs\)(ansi reset)"
     print $"(ansi attr_dimmed)research:  fetch · meta · links · feeds · distill · cite · context(ansi reset)"
     print $"(ansi attr_dimmed)           \(validate: gemini-3-pro-preview + web_search,nu — override via COMMA_VALIDATE_CFG\)(ansi reset)"
 }
@@ -130,7 +132,7 @@ export alias ,rt = report
 # pipeline
 export alias ,po = polish
 
-# publish
+# convert
 export alias ,pd = to-pdf
 export alias ,hl = to-html
 export alias ,dx = to-docx

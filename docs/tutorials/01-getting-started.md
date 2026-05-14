@@ -121,7 +121,8 @@ You used three commands from `transform.nu`, the part of comma that *rewrites* e
 - `validate.nu` — verifying text against reality (fact-checks, quote attribution)
 - `research.nu` — capture and distillation, with bridges to IWE
 - `pipeline.nu` — `polish`, an iterative critic loop
-- `publish.nu` — render to PDF, HTML, DOCX
+- `convert.nu` — render to PDF, HTML, DOCX
+- `publish.nu` — reserved for platform-publishing APIs
 
 Two important properties you should note:
 

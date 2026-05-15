@@ -42,6 +42,7 @@ If you are new, start with [Getting started](tutorials/01-getting-started.md). I
 - [analyze](reference/analyze.md) — inspect text (deterministic + LLM NLP)
 - [validate](reference/validate.md) — verify text against reality
 - [research](reference/research.md) — capture, distill, IWE bridge
+- [iwe](reference/iwe.md) — generic wrappers around the IWE CLI
 - [feeds](reference/feeds.md) — RSS/Atom subscription manager (blogtato-backed)
 - [pipeline](reference/pipeline.md) — polish (critic loop)
 - [convert](reference/convert.md) — convert markdown to/from PDF, HTML, DOCX, EPUB and other formats

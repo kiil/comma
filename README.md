@@ -178,6 +178,25 @@ Uses `gemini-3-pro-preview` with `web_search,nu` tools by default (override via 
 
 All commands return markdown on stdout. Persistence is your call — pipe to `iwe new "<Title>"` (which slugifies the title into the filename). Use `iwe attach -k <slug> --to <action>` afterwards if you want to link the new note into a configured target like a daily log or inbox.
 
+### iwe.nu — wrappers around the IWE CLI
+
+Thin wrappers that reshape IWE's output into nu records/tables and accept piped input where it makes sense. Where research.nu already wraps a specific iwe operation with comma-flavoured intent (`context` over retrieve, `bibliography` over the hierarchy), those stay there. iwe.nu is the generic-wrapper layer.
+
+| Command | What |
+|---|---|
+| `iwe-init` | Initialize the current directory as an IWE workspace |
+| `iwe-new <title>` | Create a note (content from pipe, `--content`, or stdin) |
+| `iwe-find [query]` | Search documents → table |
+| `iwe-count [...filter]` | Count matching documents → int |
+| `iwe-tree [--key <k>]` | Document hierarchy as nested records |
+| `iwe-stats` | Workspace statistics → record |
+| `iwe-retrieve <key>` | Raw retrieval with depth/context/format |
+| `iwe-squash <key>` | Assemble a skeleton document into one consolidated markdown |
+| `iwe-attach -k <key> --to <action>` | Link to a configured target (daily log, inbox, …) |
+| `iwe-rename`, `iwe-delete`, `iwe-normalize` | Refactoring/maintenance |
+
+All commands prefixed `iwe-` to avoid colliding with existing comma commands (`stats`, `extract`) and to make their target explicit.
+
 ### feeds.nu — manage RSS/Atom subscriptions
 
 Pluggable feed-reader wrapper. Default backend is [blogtato](https://github.com/kantord/blogtato) (`cargo install blogtato`); switch via `$env.COMMA_FEEDS_PROVIDER`.
@@ -349,6 +368,8 @@ comma/
 ├── analyze.nu      # stats, freq, lix, … + LLM analyzers + report
 ├── validate.nu     # factcheck, quotes, claims (web_search-enabled)
 ├── research.nu     # fetch, meta, links, feeds, distill, cite, context
+├── iwe.nu          # iwe-find, iwe-tree, iwe-stats, iwe-new, iwe-squash, …
+├── feeds.nu        # subscribe, sync, posts, mark-read (blogtato-backed)
 ├── pipeline.nu     # polish (orchestrates analyze + transform + generate)
 ├── convert.nu      # to-pdf, to-html, to-docx, to-epub, to-typst, preview, pub
 └── publish.nu      # reserved — platform-publishing APIs

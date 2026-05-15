@@ -1,7 +1,7 @@
 ---
 title: "feeds"
 parent: "Reference"
-nav_order: 6
+nav_order: 7
 ---
 
 # Reference: feeds

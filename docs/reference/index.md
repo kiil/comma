@@ -12,7 +12,8 @@ Dry, complete documentation of every command and flag, organized by module.
 - [generate](generate) — produce new text (draft, expand, title, ideas, ask)
 - [analyze](analyze) — inspect text (deterministic + LLM NLP)
 - [validate](validate) — verify text against reality (factcheck, quotes, claims)
-- [research](research) — capture, distill, IWE bridge (fetch, meta, links, feeds, distill, cite, context)
+- [research](research) — capture, distill, IWE bridge (fetch, meta, links, feeds, distill, cite, context, bibliography)
+- [feeds](feeds) — RSS/Atom subscription manager (provider-pluggable; blogtato by default)
 - [pipeline](pipeline) — polish (the critic loop)
 - [convert](convert) — convert markdown to/from PDF, HTML, DOCX, EPUB and other formats
 - [publish](publish) — reserved for platform-publishing APIs

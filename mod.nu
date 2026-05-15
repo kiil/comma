@@ -38,6 +38,7 @@ export use pipeline.nu *
 export use convert.nu *
 export use publish.nu *
 export use research.nu *
+export use feeds.nu *
 
 # --- Defaults ---
 
@@ -68,6 +69,7 @@ export def status [] {
     print $"(ansi attr_dimmed)           from-html · from-docx · from-epub · from-odt · from-latex · from-rst · from-org · from-pdf(ansi reset)"
     print $"(ansi attr_dimmed)publish:   \(reserved — platform-publishing APIs\)(ansi reset)"
     print $"(ansi attr_dimmed)research:  fetch · meta · links · feeds · distill · cite · context · bibliography(ansi reset)"
+    print $"(ansi attr_dimmed)feeds:     subscribe · unsubscribe · subs · sync · posts · unread · open-post · mark-read · mark-unread · import-opml · export-opml(ansi reset)"
     print $"(ansi attr_dimmed)           \(validate: gemini-3-pro-preview + web_search,nu — override via COMMA_VALIDATE_CFG\)(ansi reset)"
 }
 

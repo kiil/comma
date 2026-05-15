@@ -1,7 +1,7 @@
 ---
 title: "configuration"
 parent: "Reference"
-nav_order: 9
+nav_order: 10
 ---
 
 # Reference: configuration
@@ -100,6 +100,16 @@ No environment variables. PDF engine is controlled per-call via `--engine`. Temp
 ### `publish.nu`
 
 Reserved module. No commands exported yet; per-platform configuration will be defined as commands are added.
+
+### `feeds.nu`
+
+`$env.COMMA_FEEDS_PROVIDER` selects the feed-reader backend.
+
+| Value | Backend | Required binary |
+|---|---|---|
+| `blogtato` (default) | https://github.com/kantord/blogtato | `blog` |
+
+Each provider's data lives wherever that provider stores it — `blogtato` keeps its store at `~/Library/Application Support/blogtato/stores/default` on macOS (or `$RSS_STORE` if set). comma does not interpose its own storage; it shells out and reshapes the output into pipe-friendly tables.
 
 ### `research.nu`
 

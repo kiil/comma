@@ -176,6 +176,29 @@ Uses `gemini-3-pro-preview` with `web_search,nu` tools by default (override via 
 
 All commands return markdown on stdout. Persistence is your call — pipe to `iwe new "<Title>"` (which slugifies the title into the filename). Use `iwe attach -k <slug> --to <action>` afterwards if you want to link the new note into a configured target like a daily log or inbox.
 
+### feeds.nu — manage RSS/Atom subscriptions
+
+Pluggable feed-reader wrapper. Default backend is [blogtato](https://github.com/kantord/blogtato) (`cargo install blogtato`); switch via `$env.COMMA_FEEDS_PROVIDER`.
+
+| Command | What |
+|---|---|
+| `subscribe <url>` | Add a feed |
+| `unsubscribe <key>` | Remove a feed by URL or shorthand |
+| `subs` | List subscriptions as a table |
+| `sync` | Fetch updates from all feeds |
+| `posts [...query]` | Query posts as a table (provider query language) |
+| `unread [...query]` | Shortcut for `posts .unread` |
+| `open-post <shorthand>` | Open in browser |
+| `mark-read <shorthand>` | Mark read; returns the URL |
+| `mark-unread <shorthand>` | Mark unread |
+| `import-opml <file>` / `export-opml` | OPML in/out |
+
+Composes with the rest of comma:
+
+```nu
+unread 1w.. | each {|p| fetch $p.link | distill | iwe new $p.title }
+```
+
 ### pipeline.nu — iterative critic loop
 
 | Command | Alias | What |

@@ -198,9 +198,10 @@ Pluggable feed-reader wrapper. Default backend is [blogtato](https://github.com/
 | `mark-unread <id>` | Mark unread (also accepts piped input) |
 | `import-opml <file>` / `export-opml` | OPML in/out |
 
-Composes with the rest of comma:
+Composes with the rest of comma. The shorthand handling is transparent — pipe a record through and the action commands extract the right letter automatically.
 
 ```nu
+# Capture every unread post from the last week into IWE notes
 unread 1w.. | each {|p| fetch $p.link | distill | iwe new $p.title }
 
 # Pick interactively, then act on the chosen post
@@ -211,6 +212,8 @@ pick @shds 1w.. | mark-read | fetch $in | distill | iwe new "Captured"
 latest .unread | mark-read
 latest @shds | open-post
 ```
+
+The single-letter shorthand (`a`, `s`, `d`, …) blogtato uses is position-based and session-scoped; comma extracts it from records on the fly. The stable `id` field is preserved on records for deduplication purposes but is not what blog accepts for actions. See [reference/feeds](docs/reference/feeds.md) for the full caveat.
 
 ### pipeline.nu — iterative critic loop
 

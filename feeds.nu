@@ -114,6 +114,12 @@ export def sync [] {
 # verbatim to the provider's query language (blogtato: filters like
 # `.unread`, `@shorthand`, date ranges like `1w..`, groupings like `/d`).
 #
+# Each row carries both `id` (stable 16-hex internal id, useful for
+# deduplication) and `shorthand` (blogtato's single-letter session
+# shorthand — what `blog <letter> <action>` actually accepts). The
+# shorthand is position-based and re-assigned after each `sync`; treat
+# it as session-scoped.
+#
 #   posts                       # default query
 #   posts .unread 1w..          # unread in last week
 #   posts @shds                 # only from feed @shds
@@ -125,11 +131,26 @@ export def posts [
     match $p {
         "blogtato" => {
             require blog
-            ^blog export ...$query
+            let records = ^blog export ...$query
                 | lines
                 | where ($it | str trim | is-not-empty)
                 | each {|l| try { $l | from json } catch { null } }
                 | compact
+            # Parse the parallel show output to recover the per-row
+            # single-letter shorthand (blogtato emits e.g.
+            # `* 2026-05-15  a <title> (@feed Title)`). show and export
+            # use the same query and are in identical row order.
+            let shorthands = ^blog ...$query
+                | lines
+                | each {|l|
+                    let m = $l | parse --regex '^\* \S+\s+(?P<sh>\S)\s'
+                    if ($m | is-empty) { null } else { ($m | first).sh }
+                }
+                | compact
+            $records | enumerate | each {|r|
+                let sh = $shorthands | get --optional $r.index
+                $r.item | upsert shorthand $sh
+            }
         }
         _ => (unknown-provider $p)
     }
@@ -148,27 +169,32 @@ export def unread [
 # Helper: resolve a post shorthand from either pipe input or a positional
 # argument, so action commands can be called both ways:
 #
-#   open-post "6dfcc1fdbc4818f6"     # positional
-#   unread | first | open-post       # pipe a record
-#   "6dfcc1fdbc4818f6" | open-post   # pipe a string
+#   open-post a                    # positional, single-letter shorthand
+#   unread | first | open-post     # pipe a record (uses its `.shorthand`)
+#   "a" | open-post                # pipe a string
 #
-# Errors when neither is present, or when the piped value can't be
-# interpreted as a shorthand (e.g. a list).
-def resolve-id [piped: any, positional: any] {
+# The shorthand for blogtato is a single letter (a-l, A-L) assigned by
+# the current `blog` show output — not the 16-hex internal id. The id
+# field is preserved on records for deduplication but cannot be used
+# with `blog <action>`.
+#
+# Errors when neither input is present, or when the piped value cannot
+# be interpreted as a shorthand.
+def resolve-shorthand [piped: any, positional: any] {
     if $positional != null and $positional != "" { return $positional }
     if $piped == null {
-        error make {msg: "feeds: pass a post shorthand as an argument or pipe a post record/id in"}
+        error make {msg: "feeds: pass a post shorthand as an argument or pipe a post record/string in"}
     }
     let d = $piped | describe
     if ($d | str starts-with "string") { return $piped }
     if ($d | str starts-with "record") {
-        let id = $piped | get --optional id
-        if $id == null {
-            error make {msg: "feeds: piped record has no `id` field"}
+        let sh = $piped | get --optional shorthand
+        if $sh == null {
+            error make {msg: "feeds: piped record has no `shorthand` field — was it produced by this module's `posts`/`unread`/`latest`/`pick`?"}
         }
-        return $id
+        return $sh
     }
-    error make {msg: $"feeds: cannot resolve shorthand from piped value of type ($d) — pipe a string or a record with an `id` field"}
+    error make {msg: $"feeds: cannot resolve shorthand from piped value of type ($d) — pipe a string or a record with a `shorthand` field"}
 }
 
 # Open a post in the default browser (does not mark read).
@@ -178,7 +204,7 @@ def resolve-id [piped: any, positional: any] {
 export def open-post [
     shorthand?: string         # post id (or pipe a record/string)
 ] {
-    let id = resolve-id $in $shorthand
+    let id = resolve-shorthand $in $shorthand
     let p = active-provider
     match $p {
         "blogtato" => {
@@ -196,7 +222,7 @@ export def open-post [
 export def mark-read [
     shorthand?: string         # post id (or pipe a record/string)
 ] {
-    let id = resolve-id $in $shorthand
+    let id = resolve-shorthand $in $shorthand
     let p = active-provider
     match $p {
         "blogtato" => {
@@ -214,7 +240,7 @@ export def mark-read [
 export def mark-unread [
     shorthand?: string         # post id (or pipe a record/string)
 ] {
-    let id = resolve-id $in $shorthand
+    let id = resolve-shorthand $in $shorthand
     let p = active-provider
     match $p {
         "blogtato" => {

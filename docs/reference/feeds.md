@@ -100,7 +100,18 @@ posts @shds                           # only from feed @shds
 posts .read 1y.. | length             # how many posts have I read this year
 ```
 
-Returns a table of records with `id`, `title`, `date`, `feed.{url,title,site_url,description}`, `link`. Composes well with `fetch`, `distill`, `iwe new`:
+Returns a table of records with `shorthand`, `id`, `title`, `date`, `feed.{url,title,site_url,description}`, `link`.
+
+| Field | What | Stability |
+|---|---|---|
+| `shorthand` | Single letter (a–l, A–L) — what `blog <letter> <action>` accepts | **Session-scoped** — re-assigned after each `sync` |
+| `id` | 16-hex internal id from blogtato's posts.jsonl | Stable |
+| `title` | Post title from the feed | Stable |
+| `link` | Canonical URL of the post | Stable |
+
+The `shorthand` is the field you want for downstream action commands (`open-post`, `mark-read`, `mark-unread`). The `id` is useful for deduplication across runs but **cannot** be used with `blog <action>` — blogtato only accepts the single-letter form.
+
+Composes well with `fetch`, `distill`, `iwe new`:
 
 ```nu
 unread | each {|p| fetch $p.link | distill | iwe new $p.title }
@@ -234,11 +245,22 @@ When called without a positional argument, the action commands look at `$in`:
 
 | Piped type | Behaviour |
 |---|---|
-| string | used as the shorthand directly |
-| record with `.id` field | `id` is extracted |
+| string | used as the shorthand directly (expect single letter for blogtato) |
+| record with `.shorthand` field | `shorthand` is extracted |
+| record without `.shorthand` | error — was the record produced by this module's `posts`/`unread`/`latest`/`pick`? |
 | anything else | error with a clear message |
 
 Lists are not handled implicitly — use `each {|p| $p | mark-read}` for bulk operations. That keeps the action commands' contract simple and lets you compose them with any nu iteration construct.
+
+### Caveat: shorthand stability
+
+blogtato's single-letter shorthand is assigned by **position in the current query result**. That means:
+
+- `latest .unread | get shorthand` today and tomorrow refer to *different* posts (the top of the unread list will have shifted as you mark things read or as new posts arrive).
+- After `sync`, all shorthand letters are re-assigned.
+- Across different queries, the same letter (`a`) can refer to different posts.
+
+Use shorthands **within a session** — same query, no sync in between. If you need to store a reference to a specific post over time, save its `id` or `link` instead and look it up again later.
 
 ## Import / export
 

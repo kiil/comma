@@ -197,6 +197,8 @@ Thin wrappers that reshape IWE's output into nu records/tables and accept piped 
 
 All commands prefixed `iwe-` to avoid colliding with existing comma commands (`stats`, `extract`) and to make their target explicit.
 
+A ready-to-use `.iwe/config.toml` example for the comma research flow is in [`examples/iwe-config.toml`](examples/iwe-config.toml) — defines a `research` template plus `today` and `research-inbox` attach actions so capture can chain into a daily log and a rolling inbox.
+
 ### feeds.nu — manage RSS/Atom subscriptions
 
 Pluggable feed-reader wrapper. Default backend is [blogtato](https://github.com/kantord/blogtato) (`cargo install blogtato`); switch via `$env.COMMA_FEEDS_PROVIDER`.

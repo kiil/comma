@@ -12,6 +12,8 @@ Wrappers around the [IWE](https://iwe.md) CLI that reshape its output into nu re
 
 **Dependency:** `iwe` on PATH. All commands must be run from inside an IWE workspace (a directory with a `.iwe/` folder).
 
+> **Starting point:** a ready-to-use `.iwe/config.toml` example for the comma research flow lives at [`examples/iwe-config.toml`](https://github.com/kiil/comma/blob/main/examples/iwe-config.toml). It sets up a `research` template (puts notes under `research/<slug>.md`) plus `today` and `research-inbox` attach actions so capture can chain into a daily log and a rolling inbox.
+
 ## Capture
 
 ### `iwe-init`

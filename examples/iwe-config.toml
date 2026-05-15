@@ -1,0 +1,125 @@
+# .iwe/config.toml — example configuration tuned for comma's research flow.
+#
+# Drop this into the `.iwe/` directory of an IWE workspace
+# (`iwe init` in a directory creates the `.iwe/` folder for you).
+#
+# This config sets up three patterns that play well with comma:
+#
+#   1. A `research` template (used by `iwe-new --template research`)
+#      that places captured or distilled notes under `research/<slug>.md`
+#      with a consistent shape.
+#
+#   2. A `research-inbox` attach action so you can chain capture with
+#      `iwe attach -k <slug> --to research-inbox` and have each new note
+#      automatically linked into a single rolling research-inbox.md.
+#
+#   3. A `today` attach action for a daily-log pattern — every note you
+#      capture today can be linked into `journal/<today>.md` as well.
+#
+# Usage examples from the comma side:
+#
+#   fetch <url> --frontmatter | iwe-new "Espresso extraction" --template research
+#   iwe-attach -k espresso-extraction --to research-inbox
+#   iwe-attach -k espresso-extraction --to today
+#
+# After those three commands you have:
+#   - research/espresso-extraction.md   (the captured note itself)
+#   - research-inbox.md                  (rolling list of all research)
+#   - journal/2026-05-15.md              (today's journal, with the new
+#                                          note as a block reference)
+
+version = 3
+
+[markdown]
+refs_extension = ""
+# Format used when rendering {{today}} in title and template fields.
+# `%Y-%m-%d` is the ISO date; switch to e.g. "%A %d %B %Y" for prose-style.
+date_format = "%Y-%m-%d"
+
+[library]
+path = ""
+
+[completion]
+
+# --- Templates -------------------------------------------------------
+# Used by `iwe new "<Title>" --template <name>`. The key_template
+# determines where the file lands; document_template wraps the content
+# piped in.
+
+# Default template — used by `iwe new <Title>` without --template.
+# The note lands at <slug>.md at the workspace root.
+[templates.default]
+key_template = "{{slug}}"
+document_template = """
+# {{title}}
+
+{{content}}
+"""
+
+# Research template — captured or distilled notes land under research/
+# with a consistent slug pattern. Useful for keeping research material
+# separate from your own writing.
+[templates.research]
+key_template = "research/{{slug}}"
+document_template = """
+# {{title}}
+
+{{content}}
+"""
+
+# Distilled template — for the structured study notes produced by
+# `comma distill`. Same shape as research/ but namespaced separately so
+# you can tell raw captures from analyzed ones at a glance.
+[templates.distilled]
+key_template = "distilled/{{slug}}"
+document_template = """
+# {{title}}
+
+{{content}}
+"""
+
+# --- Attach actions --------------------------------------------------
+# Used by `iwe attach -k <source-key> --to <action-name>`. Each action
+# creates or appends to a target document, adding the source as a block
+# reference.
+
+# Daily journal — `iwe attach -k <key> --to today` links a note into
+# `journal/<YYYY-MM-DD>.md`, creating that file on first use.
+#
+# IWE uses the `title` field as the H1 heading for the target document;
+# template variables ({{today}}, etc.) are substituted, so a title of
+# "{{today}}" produces an H1 like "# 2026-05-15" rendered with the
+# `[markdown].date_format` above.
+[actions.today]
+type = "attach"
+title = "{{today}}"
+key_template = "journal/{{today}}"
+document_template = """
+# {{today}}
+
+{{content}}
+"""
+
+# Research inbox — `iwe attach -k <key> --to research-inbox` links every
+# new research note into a single rolling research-inbox.md so you have
+# one canonical list to browse and triage from.
+[actions.research-inbox]
+type = "attach"
+title = "Research inbox"
+key_template = "research-inbox"
+document_template = """
+# Research inbox
+
+{{content}}
+"""
+
+# --- Commands --------------------------------------------------------
+# IWE can run external LLM commands for its in-editor "transform"
+# actions. Comma does not use these (it has its own LLM commands in
+# transform/generate/analyze), but defining a default keeps IWE happy
+# if you also use its editor integration.
+
+[commands]
+
+[commands.default]
+run = ""

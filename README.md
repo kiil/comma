@@ -44,6 +44,8 @@ Optional, per module:
 | research | `nu_plugin_browse` | Headless Chromium for JS-rendered pages. Only needed for `--js` flag on `fetch`/`meta`/`links`/`feeds`. `cargo install nu_plugin_browse && plugin add ~/.cargo/bin/nu_plugin_browse` |
 | research | `iwe` | Markdown knowledge graph used as note persistence layer. https://iwe.md |
 | validate | network | `factcheck` and `quotes` use `web_search` |
+| feeds | `blog` (blogtato) | Default RSS/Atom backend. `cargo install blogtato` |
+| feeds | `fzf` | Used by `pick` for interactive post selection |
 
 Commands that need a missing tool fail with a clear error pointing at the install command. The module loads regardless.
 
@@ -188,15 +190,26 @@ Pluggable feed-reader wrapper. Default backend is [blogtato](https://github.com/
 | `sync` | Fetch updates from all feeds |
 | `posts [...query]` | Query posts as a table (provider query language) |
 | `unread [...query]` | Shortcut for `posts .unread` |
-| `open-post <shorthand>` | Open in browser |
-| `mark-read <shorthand>` | Mark read; returns the URL |
-| `mark-unread <shorthand>` | Mark unread |
+| `latest [...query]` | Most recent matching post as a record |
+| `find-post <needle>` | Filter posts by title substring (case-insensitive) |
+| `pick [...query]` | Interactive fzf picker; returns the chosen post record |
+| `open-post <id>` | Open in browser (also accepts a piped record/string) |
+| `mark-read <id>` | Mark read; returns the URL (also accepts piped input) |
+| `mark-unread <id>` | Mark unread (also accepts piped input) |
 | `import-opml <file>` / `export-opml` | OPML in/out |
 
 Composes with the rest of comma:
 
 ```nu
 unread 1w.. | each {|p| fetch $p.link | distill | iwe new $p.title }
+
+# Pick interactively, then act on the chosen post
+pick .unread | open-post
+pick @shds 1w.. | mark-read | fetch $in | distill | iwe new "Captured"
+
+# Latest of something, automatically piped to actions
+latest .unread | mark-read
+latest @shds | open-post
 ```
 
 ### pipeline.nu — iterative critic loop

@@ -121,28 +121,96 @@ unread                                # unread posts (default range)
 unread 1w..                           # unread in last week
 ```
 
+## Lookup helpers
+
+These return post records (or pick interactively) so you do not have to read shorthand IDs off a table and paste them. All three compose with the action commands below — the result of any of them can be piped directly into `open-post`, `mark-read` or `mark-unread`.
+
+### `latest`
+
+Return the most recent matching post as a record.
+
+```
+latest [...query]
+```
+
+**Example:**
+
+```nu
+latest                          # most recent post overall
+latest .unread                  # most recent unread
+latest @shds                    # most recent from feed @shds
+latest .unread | open-post      # open the newest unread
+```
+
+### `find-post`
+
+Filter posts by case-insensitive substring match against the title. Extra query terms narrow the search space first.
+
+```
+find-post <needle> [...filter]
+```
+
+**Example:**
+
+```nu
+find-post espresso
+find-post "AI safety" .unread
+find-post coffee | first | mark-read
+```
+
+### `pick`
+
+Interactive [fzf](https://github.com/junegunn/fzf) picker over a posts query. Returns the selected post as a record. The shorthand IDs are hidden from the fzf prompt — you choose by title and feed name.
+
+```
+pick [...query]
+```
+
+**Dependency:** `fzf` on PATH.
+
+**Example:**
+
+```nu
+pick                                # pick from all posts
+pick .unread                        # pick from unread
+pick @shds 1w.. | open-post         # browse a feed's recent posts
+pick | mark-read | fetch $in | distill | iwe new "Captured"
+```
+
+## Action commands
+
+These three accept the post shorthand either as a positional argument *or* via pipe (a post record or a bare id string). The pipe form is the recommended pattern — you rarely need to see or type the shorthand at all.
+
 ### `open-post`
 
 Open a post in the system default browser. Does *not* mark the post as read.
 
 ```
-open-post <shorthand>
+open-post [<shorthand>]
 ```
 
-The shorthand is the `id` field from `posts`/`unread` output.
+**Example:**
+
+```nu
+open-post 6dfcc1fdbc4818f6
+latest .unread | open-post
+pick .unread | open-post
+```
 
 ### `mark-read`
 
 Mark a post as read. Returns the post's URL on stdout so the command composes with downstream consumers.
 
 ```
-mark-read <shorthand>
+mark-read [<shorthand>]
 ```
 
 **Example:**
 
 ```nu
-mark-read 6dfcc1fdbc4818f6 | fetch $in | distill | iwe new "Captured post"
+mark-read 6dfcc1fdbc4818f6
+latest .unread | mark-read | fetch $in | distill | iwe new "Captured post"
+find-post boring | each {|p| $p | mark-read}      # bulk-dismiss
 ```
 
 ### `mark-unread`
@@ -150,8 +218,27 @@ mark-read 6dfcc1fdbc4818f6 | fetch $in | distill | iwe new "Captured post"
 Mark a post as unread.
 
 ```
-mark-unread <shorthand>
+mark-unread [<shorthand>]
 ```
+
+**Example:**
+
+```nu
+mark-unread 6dfcc1fdbc4818f6
+posts .read @misclicked-feed | each {|p| $p | mark-unread}
+```
+
+### Resolving the shorthand from pipe input
+
+When called without a positional argument, the action commands look at `$in`:
+
+| Piped type | Behaviour |
+|---|---|
+| string | used as the shorthand directly |
+| record with `.id` field | `id` is extracted |
+| anything else | error with a clear message |
+
+Lists are not handled implicitly — use `each {|p| $p | mark-read}` for bulk operations. That keeps the action commands' contract simple and lets you compose them with any nu iteration construct.
 
 ## Import / export
 

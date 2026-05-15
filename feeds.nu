@@ -145,17 +145,45 @@ export def unread [
     posts ".unread" ...$query
 }
 
+# Helper: resolve a post shorthand from either pipe input or a positional
+# argument, so action commands can be called both ways:
+#
+#   open-post "6dfcc1fdbc4818f6"     # positional
+#   unread | first | open-post       # pipe a record
+#   "6dfcc1fdbc4818f6" | open-post   # pipe a string
+#
+# Errors when neither is present, or when the piped value can't be
+# interpreted as a shorthand (e.g. a list).
+def resolve-id [piped: any, positional: any] {
+    if $positional != null and $positional != "" { return $positional }
+    if $piped == null {
+        error make {msg: "feeds: pass a post shorthand as an argument or pipe a post record/id in"}
+    }
+    let d = $piped | describe
+    if ($d | str starts-with "string") { return $piped }
+    if ($d | str starts-with "record") {
+        let id = $piped | get --optional id
+        if $id == null {
+            error make {msg: "feeds: piped record has no `id` field"}
+        }
+        return $id
+    }
+    error make {msg: $"feeds: cannot resolve shorthand from piped value of type ($d) — pipe a string or a record with an `id` field"}
+}
+
 # Open a post in the default browser (does not mark read).
 #
 #   open-post "6dfcc1fdbc4818f6"
+#   unread | first | open-post
 export def open-post [
-    shorthand: string          # post id from posts/unread output
+    shorthand?: string         # post id (or pipe a record/string)
 ] {
+    let id = resolve-id $in $shorthand
     let p = active-provider
     match $p {
         "blogtato" => {
             require blog
-            ^blog open $shorthand
+            ^blog open $id
         }
         _ => (unknown-provider $p)
     }
@@ -164,15 +192,16 @@ export def open-post [
 # Mark a post as read and return its URL on stdout.
 #
 #   mark-read "6dfcc1fdbc4818f6"
-#   mark-read "6dfcc1fdbc4818f6" | fetch $in | distill | iwe new "Captured post"
+#   unread | first | mark-read | fetch $in | distill | iwe new "Captured post"
 export def mark-read [
-    shorthand: string
+    shorthand?: string         # post id (or pipe a record/string)
 ] {
+    let id = resolve-id $in $shorthand
     let p = active-provider
     match $p {
         "blogtato" => {
             require blog
-            ^blog read $shorthand
+            ^blog read $id
         }
         _ => (unknown-provider $p)
     }
@@ -181,17 +210,83 @@ export def mark-read [
 # Mark a post as unread.
 #
 #   mark-unread "6dfcc1fdbc4818f6"
+#   posts @spam-feed | each {|p| $p | mark-unread}
 export def mark-unread [
-    shorthand: string
+    shorthand?: string         # post id (or pipe a record/string)
 ] {
+    let id = resolve-id $in $shorthand
     let p = active-provider
     match $p {
         "blogtato" => {
             require blog
-            ^blog unread $shorthand
+            ^blog unread $id
         }
         _ => (unknown-provider $p)
     }
+}
+
+# --- Lookup helpers ---
+
+# Return the most recent post as a record, optionally filtered.
+#
+#   latest                       # most recent post overall
+#   latest .unread               # most recent unread post
+#   latest @shds                 # most recent from feed @shds
+#   latest | open-post           # open whatever was newest
+export def latest [
+    ...query: string           # extra query terms passed to posts
+] {
+    let candidates = posts ...$query
+    if ($candidates | is-empty) {
+        error make {msg: "latest: no posts match the query"}
+    }
+    $candidates | sort-by date --reverse | first
+}
+
+# Search posts by title (case-insensitive substring match). Extra query
+# terms are passed through to `posts` first to narrow the search space.
+#
+#   find-post espresso
+#   find-post "AI safety" .unread
+#   find-post coffee | first | mark-read
+export def find-post [
+    needle: string             # substring to match against the post title
+    ...filter: string          # extra query terms passed to posts
+] {
+    let target = $needle | str downcase
+    posts ...$filter | where {|p| ($p.title | str downcase | str contains $target)}
+}
+
+# Interactive fzf picker over a posts result. Returns the selected post
+# as a record — pipe straight into an action command.
+#
+#   pick                            # pick from all posts (default query)
+#   pick .unread                    # pick from unread
+#   pick @shds 1w.. | open-post     # pick from feed @shds in last week, open it
+#   pick | mark-read | fetch $in | distill | iwe new "Captured"
+#
+# Dependency: `fzf` on PATH.
+export def pick [
+    ...query: string           # query terms passed to posts
+] {
+    require fzf
+    let candidates = posts ...$query
+    if ($candidates | is-empty) {
+        error make {msg: "pick: no posts match the query"}
+    }
+    let lines = $candidates | each {|p|
+        let feed_title = $p.feed?.title? | default "?"
+        $"($p.id)\t($p.title)\t— ($feed_title)"
+    }
+    let selected = $lines
+        | str join "\n"
+        | ^fzf --delimiter "\t" --with-nth "2.." --prompt "post> " --ansi
+        | str trim
+    if ($selected | is-empty) {
+        error make {msg: "pick: nothing selected"}
+    }
+    let id = $selected | split row "\t" | first
+    $candidates | where id == $id | first
 }
 
 # --- Import / export ---
